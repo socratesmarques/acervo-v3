@@ -1,0 +1,6 @@
+# Exemplo: Caddy no host encaminha HTTPS ao web em localhost.
+# Troque pelo seu domínio e configure APP_ORIGIN=https://videos.seudominio.com
+# e COOKIE_SECURE=true no .env. Aponte o DNS para o servidor.
+videos.seudominio.com {
+  reverse_proxy localhost:8080
+}

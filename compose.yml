@@ -1,0 +1,89 @@
+name: acervo
+x-backend: &backend
+  build: ./backend
+  image: acervo-backend:local
+  environment: &environment
+    DATABASE_URL: postgresql://acervo:${POSTGRES_PASSWORD:?Execute node scripts/setup.mjs}@db:5432/acervo
+    APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
+    COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    TRUST_PROXY: "true"
+    STORAGE_DIR: /app/storage
+    STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+    MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10240}
+    FFMPEG_TIMEOUT_SECONDS: ${FFMPEG_TIMEOUT_SECONDS:-14400}
+    S3_BUCKET: ${S3_BUCKET:-}
+    S3_REGION: ${S3_REGION:-auto}
+    S3_ENDPOINT: ${S3_ENDPOINT:-}
+    S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+    S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+  volumes:
+    - media:/app/storage
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: acervo
+      POSTGRES_USER: acervo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Execute node scripts/setup.mjs}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acervo -d acervo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  init:
+    <<: *backend
+    command: ["node", "scripts/bootstrap.js"]
+    environment:
+      <<: *environment
+      ADMIN_NAME: ${ADMIN_NAME:-Sócrates}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Configure ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Configure ADMIN_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+  api:
+    <<: *backend
+    command: ["node", "src/server.js"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  worker:
+    <<: *backend
+    command: ["node", "src/worker.js"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    cpus: 2.0
+    mem_limit: 2g
+    stop_grace_period: 30s
+    restart: unless-stopped
+  web:
+    build: ./frontend
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  postgres:
+  media:

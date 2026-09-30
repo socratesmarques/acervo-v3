@@ -1,0 +1,8 @@
+{
+  "appId": "com.socrates.acervo",
+  "appName": "acervo",
+  "webDir": "dist",
+  "server": {
+    "url": "https://desktop-qdrqsqq.tailacb07e.ts.net"
+  }
+}

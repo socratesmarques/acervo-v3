@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.local
+*.log
+.DS_Store
+coverage/
+test-results/
+playwright-report/
+*.dump
+backups/
+backend/storage/
+frontend/public/media/pessoais/
