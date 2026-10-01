@@ -4,6 +4,10 @@ React + Vite + Tailwind, Fastify, PostgreSQL, FFmpeg e HLS. Versão 1.3.0 — cl
 
 O catálogo fictício foi substituído pela API. A aplicação começa vazia e sem senha universal. O catálogo e os arquivos hospedados pelo ACERVO exigem autenticação. Vídeos externos seguem também as regras de acesso do provedor; sua URL pode ser acessada fora do ACERVO.
 
+## Enviar filmes pelo navegador
+
+A extensão **Enviar para ACERVO** preenche o nome e o player da página aberta e abre uma revisão autenticada no painel. Consulte [instalação e uso](extension/README.md).
+
 ## Atualizar uma instalação existente
 
 Leia [ATUALIZAR-FILMES-SERIES.md](ATUALIZAR-FILMES-SERIES.md). Preserve seu `.env` e os volumes existentes.

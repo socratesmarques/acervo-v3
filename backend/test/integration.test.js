@@ -189,6 +189,29 @@ test("fluxo completo de API, permissões, processamento e persistência", async 
       200,
     );
   });
+  await t.test("importação: rascunho, nome, aliases, duplicados, validação e permissões", async () => {
+    const body = { title: "Patrulha Canina — Ação", description: "Nome capturado", categoryId: category.id, contentType: "movie", externalUrl: "https://redecanais.af/player3/server.php?server=A&vid=IMPORT&subfolder=ondemand" };
+    assert.equal((await request("POST", "/api/admin/imports", body, null)).statusCode, 401);
+    assert.equal((await request("POST", "/api/admin/imports", body, viewerSession)).statusCode, 403);
+    assert.equal((await request("POST", "/api/admin/imports", body, adminSession, { "x-csrf-token": "wrong" })).statusCode, 403);
+    assert.equal((await request("POST", "/api/admin/imports", body, adminSession, { origin: "https://evil.example" })).statusCode, 403);
+    for (const override of [{ title: "" }, { contentType: "invalid" }, { published: true }, { externalUrl: "https://unknown.example/player3/server.php" }, { externalUrl: "javascript:alert(1)" }])
+      assert.equal((await request("POST", "/api/admin/imports", { ...body, ...override })).statusCode, 400);
+    const created = await request("POST", "/api/admin/imports", body);
+    assert.equal(created.statusCode, 201, created.body);
+    const id = created.json().id;
+    const video = (await request("GET", `/api/videos/${id}`)).json();
+    assert.equal(video.title, body.title);
+    assert.equal(video.published, false);
+    assert.equal(video.contentType, "movie");
+    assert(video.externalUrl.startsWith("https://redecanais.press/"));
+    assert.equal((await request("GET", `/api/videos/${id}`, undefined, viewerSession)).statusCode, 404);
+    const duplicate = await request("POST", "/api/admin/imports", { ...body, title: "Não sobrescrever", externalUrl: "https://redecanais.press/player3/server.php?vid=IMPORT&subfolder=ondemand&server=A#play" });
+    assert.equal(duplicate.statusCode, 200, duplicate.body);
+    assert.deepEqual(duplicate.json(), { id, duplicate: true });
+    assert.equal((await request("GET", `/api/videos/${id}`)).json().title, body.title);
+    await request("DELETE", `/api/videos/${id}`);
+  });
   await t.test("vídeo externo: validação, persistência, edição, publicação e permissões", async () => {
     async function createExternal(overrides = {}, session = adminSession) {
       const boundary = "external-" + randomUUID();

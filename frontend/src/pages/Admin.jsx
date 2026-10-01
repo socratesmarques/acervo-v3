@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import useData from "../hooks/useData";
 import { api, upload } from "../services/api";
+import ImportVideo from "./ImportVideo";
 import Providers from "./Providers";
 import Feedback from "../components/Feedback";
 import { formatDate } from "../utils/format";
@@ -680,6 +681,7 @@ export default function Admin() {
           <Route path="upload" element={<UploadPage />} />
           <Route path="categories" element={<Categories />} />
           <Route path="users" element={<UserList />} />
+          <Route path="import" element={<ImportVideo />} />
           <Route path="providers" element={<Providers />} />
           <Route
             path="*"

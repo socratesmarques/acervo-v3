@@ -86,7 +86,7 @@ export function RequireAuth({ children, admin = false }) {
     return (
       <Navigate
         to="/login"
-        state={{ from: location.pathname + location.search }}
+        state={{ from: location.pathname + location.search + location.hash }}
         replace
       />
     );

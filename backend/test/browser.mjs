@@ -271,6 +271,72 @@ try {
     .fill("Outra-senha-de-teste-5678");
   await page.getByRole("button", { name: "Salvar senha" }).click();
   await page.getByRole("button", { name: "Entrar", exact: true }).waitFor();
+  // O fragmento deve sobreviver ao login, sem enviar dados do importador na URL HTTP.
+  const imported = { version: 1, title: "Patrulha Canina — Ação", description: "Prévia da extensão", externalUrl: "https://www.youtube.com/embed/import-test" };
+  const importUrl = origin + "/admin/import#" + encodeURIComponent(JSON.stringify(imported));
+  await page.goto(importUrl);
+  await page.getByLabel("E-mail", { exact: true }).fill("browser@test.local");
+  await page.getByLabel("Senha", { exact: true }).fill("Outra-senha-de-teste-5678");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await page.getByRole("heading", { name: "Revise o conteúdo capturado." }).waitFor();
+  assert.equal(await page.getByLabel("Título", { exact: true }).inputValue(), imported.title);
+  await page.locator("select[name=categoryId]").selectOption({ label: "Viagens" });
+  await page.screenshot({ path: path.join(root, "backend/test-results/import-mobile.png"), fullPage: true });
+  await page.getByRole("button", { name: "Salvar rascunho" }).click();
+  await page.getByRole("heading", { name: "Rascunho salvo." }).waitFor();
+  await page.goto(importUrl);
+  await page.reload();
+  await page.locator("select[name=categoryId]").selectOption({ label: "Viagens" });
+  await page.getByRole("button", { name: "Salvar rascunho" }).click();
+  await page.getByRole("heading", { name: "Este player já está no acervo." }).waitFor();
+  await page.goto(origin + "/admin/import#invalid");
+  await page.getByRole("alert").waitFor();
+  // HTML controlado reproduz o formato de iframe codificado da imagem do usuário.
+  const extraction = await readFile(path.join(root, "extension/extract.js"), "utf8");
+  const fixture = await context.newPage();
+  await fixture.route("https://catalog.example/**", route => route.fulfill({ contentType: "text/html; charset=utf-8", body: '<title>Embed</title><meta property="og:title" content="Patrulha Canina - RedeCanais"><textarea>&lt;iframe src="//%72%65%64%65%63%61%6e%61%69%73.press/player3/server.php?vid=TEST&amp;server=A"&gt;&lt;/iframe&gt;</textarea>' }));
+  await fixture.goto("https://catalog.example/movie");
+  const captured = await fixture.evaluate(extraction);
+  assert.equal(captured.title, "Patrulha Canina");
+  assert.equal(captured.urls[0], "https://redecanais.press/player3/server.php?vid=TEST&server=A");
+  await fixture.route("https://catalog.example/embed/**", route => route.fulfill({ contentType: "text/html", body: '<title>Embed</title><a href="/player3/embed.api?embed=' + Buffer.from('player3/server.php?vid=ABC&server=B').toString('base64') + '">Embed</a><iframe src="javascript:alert(1)"></iframe>' }));
+  await fixture.goto("https://catalog.example/embed/test");
+  const encoded = await fixture.evaluate(extraction);
+  assert.equal(encoded.title, "");
+  assert.deepEqual(encoded.urls, ["https://catalog.example/player3/server.php?vid=ABC&server=B"]);
+  await fixture.close();
+  // Exercita o popup real com APIs chrome simuladas; o extrator foi testado acima.
+  const popup = await context.newPage();
+  await popup.setViewportSize({ width: 380, height: 760 });
+  await popup.addInitScript(({ captured }) => {
+    window.sentToAcervo = null;
+    window.close = () => {};
+    window.chrome = {
+      storage: {
+        local: { get: async () => ({}), set: async () => {} },
+        session: { get: async () => ({}), set: async () => {}, remove: async () => {} },
+      },
+      tabs: { query: async () => [{ id: 1, url: "https://catalog.example/movie" }], create: async data => { window.sentToAcervo = data.url; } },
+      scripting: { executeScript: async () => [{ result: captured }] },
+    };
+  }, { captured });
+  await popup.route("https://extension.example/**", async route => {
+    const filename = new URL(route.request().url()).pathname.slice(1);
+    const contentType = filename.endsWith(".js") ? "text/javascript" : filename.endsWith(".css") ? "text/css" : "text/html; charset=utf-8";
+    await route.fulfill({ contentType, body: await readFile(path.join(root, "extension", filename)) });
+  });
+  await popup.goto("https://extension.example/popup.html");
+  await popup.getByText("Nome preenchido automaticamente. Confira antes de enviar.").waitFor();
+  assert.equal(await popup.getByLabel("Nome do filme ou série").inputValue(), "Patrulha Canina");
+  await popup.getByLabel("Endereço do seu ACERVO").fill(origin);
+  await popup.screenshot({ path: path.join(root, "backend/test-results/extension-popup.png"), fullPage: true });
+  await popup.getByRole("button", { name: "Enviar para ACERVO", exact: true }).click();
+  await popup.waitForFunction(() => window.sentToAcervo !== null);
+  const target = new URL(await popup.evaluate(() => window.sentToAcervo));
+  assert.equal(target.origin, origin);
+  assert.equal(target.pathname, "/admin/import");
+  assert.equal(JSON.parse(decodeURIComponent(target.hash.slice(1))).title, "Patrulha Canina");
+  await popup.close();
   assert.deepEqual(errors, []);
   console.log(
     "PASS: login, categoria, upload, HLS playback, favorito, histórico e retomada, busca, admin, vídeo externo e mudança de domínio no painel com CSP dinâmica e iframe simulado, layout 390px e alteração de senha. Sem erros de JavaScript.",
