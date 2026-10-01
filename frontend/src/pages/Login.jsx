@@ -7,7 +7,9 @@ export default function Login() {
     navigate = useNavigate();
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  if (user) return <Navigate to="/" replace />;
+  const from = location.state?.from;
+  const destination = typeof from === "string" && from.startsWith("/") && !from.startsWith("//") && !from.includes("\\") ? from : "/";
+  if (user) return <Navigate to={destination} replace />;
   async function submit(e) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
@@ -15,8 +17,7 @@ export default function Login() {
     setError("");
     try {
       await login(form.get("email"), form.get("password"));
-      const from = location.state?.from;
-      navigate(from?.startsWith("/") && !from.startsWith("//") ? from : "/", {
+      navigate(destination, {
         replace: true,
       });
     } catch (e) {

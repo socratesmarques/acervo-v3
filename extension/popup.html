@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Enviar para ACERVO</title><link rel="stylesheet" href="popup.css"></head>
+<body><h1>ACERVO<span>•</span></h1><p>Revise o nome e envie o player para seu painel.</p>
+<form id="form">
+<label>Endereço do seu ACERVO<input id="origin" type="url" required placeholder="https://seu-acervo.example" maxlength="300"></label>
+<label>Nome do filme ou série<input id="title" required maxlength="160" autocomplete="off"></label>
+<label>Player encontrado<select id="player" required></select></label>
+<p id="status" role="status">Lendo a página aberta…</p>
+<button id="send" type="submit" disabled>Enviar para ACERVO</button>
+<button id="remember" type="button">Guardar nome desta página</button>
+<button id="restore" type="button" hidden>Usar nome guardado</button>
+<button id="forget" type="button" hidden>Apagar dados guardados</button>
+</form><p class="hint">Se estiver na tela Embed sem nome, guarde o nome na página do filme primeiro. O cadastro será revisado no ACERVO antes de salvar.</p>
+<script src="popup.js" type="module"></script></body></html>
