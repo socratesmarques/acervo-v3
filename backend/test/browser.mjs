@@ -225,7 +225,6 @@ try {
   // No third-party network dependency: verify iframe integration with a controlled response.
   await page.route("https://www.youtube.com/embed/**", route => route.fulfill({ contentType: "text/html; charset=utf-8", body: "<h1>Player externo de teste</h1>" }));
   await page.getByLabel("Origem do vídeo").selectOption("external");
-  await page.getByLabel("Tipo de conteúdo").selectOption("movie");
   assert.equal(await page.locator('input[name="video"]').count(), 0);
   await page.getByLabel("Título", { exact: true }).fill("Externo de teste");
   await page.getByLabel("URL de incorporação").fill("https://www.youtube.com/embed/test123");
@@ -236,7 +235,7 @@ try {
   await page.waitForURL("**/admin/videos");
   const row = page.getByRole("row").filter({ hasText: "Externo de teste" });
   await row.getByRole("link", { name: "Editar", exact: true }).click();
-  assert.equal(await page.getByLabel("Tipo de conteúdo").inputValue(), "movie");
+  assert.equal(await page.locator("select[name=contentType]").count(), 0);
   await page.getByLabel("URL de incorporação").fill("https://www.youtube.com/embed/edited123");
   await page.getByRole("button", { name: "Salvar alterações" }).click();
   await page.waitForURL("**/admin/videos");
@@ -263,17 +262,18 @@ try {
   assert.equal(await page.frameLocator("iframe").locator("iframe").getAttribute("src"), "https://player.example/embed/edited123");
   // Real series/season/episode forms and navigation, with a controlled provider iframe.
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto(origin + "/admin/upload");
-  await page.getByLabel("Tipo de conteúdo").selectOption("series");
+  await page.goto(origin + "/admin/series");
+  await page.getByRole("link", { name: "Nova série", exact: true }).click();
+  await page.getByRole("heading", { name: "Uma série, várias histórias." }).waitFor();
   assert.equal(await page.locator('input[name="video"]').count(), 0);
   assert.equal(await page.locator('input[name="externalUrl"]').count(), 0);
-  await page.getByLabel("Título", { exact: true }).fill("Horizontes");
+  await page.getByLabel("Nome da série", { exact: true }).fill("Horizontes");
   await page.locator("select[name=categoryId]").selectOption({ label: "Viagens" });
-  await page.getByRole("button", { name: "Criar série e adicionar temporadas" }).click();
+  await page.getByRole("button", { name: "Criar série", exact: true }).click();
   await page.getByRole("heading", { name: "Temporadas e episódios" }).waitFor();
   const seriesAdminUrl = page.url();
   const seriesId = new URL(seriesAdminUrl).pathname.split("/").at(-1);
-  await page.getByRole("button", { name: "Criar temporada", exact: true }).click();
+
   await page.getByRole("link", { name: "Adicionar episódio", exact: true }).click();
   await page.getByRole("heading", { name: "Novo episódio", exact: true }).waitFor();
   await page.getByLabel("Título", { exact: true }).fill("A partida");
@@ -290,6 +290,15 @@ try {
   await page.locator('.season-toolbar select').selectOption({ label: "Temporada 2" });
   await page.getByText("1. O retorno", { exact: true }).waitFor();
   await page.screenshot({ path: path.join(root, "backend/test-results/series-admin-desktop.png"), fullPage: true });
+  await page.goto(origin + "/admin/series");
+  await page.getByText("2 temporada(s) · 2 episódio(s)", { exact: true }).waitFor();
+  await page.screenshot({ path: path.join(root, "backend/test-results/series-list-desktop.png"), fullPage: true });
+  await page.goto(origin + "/admin/videos");
+  await page.getByRole("heading", { name: "Filmes e vídeos", exact: true }).waitFor();
+  assert.equal(await page.getByRole("row").filter({ hasText: "Horizontes" }).count(), 0);
+  await page.goto(origin + "/admin/videos/" + seriesId);
+  await page.waitForURL(seriesAdminUrl);
+  await page.locator('.season-toolbar select').selectOption({ label: "Temporada 2" });
   await page.getByLabel("Link ou ID do vídeo no ACERVO").fill(externalWatchUrl);
   await page.getByRole("button", { name: "Vincular episódio", exact: true }).click();
   await page.getByText("2. Externo de teste", { exact: true }).waitFor();
@@ -314,6 +323,10 @@ try {
   await page.getByRole("link", { name: /O retorno/ }).waitFor();
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: path.join(root, "backend/test-results/series-mobile.png"), fullPage: true });
+  await page.goto(origin + "/admin/series");
+  await page.getByText("2 temporada(s) · 3 episódio(s)", { exact: true }).waitFor();
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: path.join(root, "backend/test-results/series-list-mobile.png"), fullPage: true });
   await page.goto(seriesAdminUrl);
   await page.getByRole("heading", { name: "Temporadas e episódios" }).waitFor();
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -437,6 +450,16 @@ try {
   await popup.getByRole("button", { name: "Salvar vídeo", exact: true }).click();
   await popup.getByRole("status").filter({ hasText: "Vídeo salvo como rascunho:" }).waitFor();
   await popup.screenshot({ path: path.join(root, "backend/test-results/extension-success.png"), fullPage: true });
+  // A legacy series retains its source in storage but never exposes a standalone player.
+  await db.query("UPDATE videos SET source_type='external', provider_id='youtube', external_path='/embed/legacy' WHERE id=$1", [seriesId]);
+  await page.goto(origin + "/video/" + seriesId);
+  await page.getByRole("heading", { name: "Horizontes", exact: true, level: 1 }).waitFor();
+  assert.equal(await page.locator('iframe, video').count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Carregar vídeo externo" }).count(), 0);
+  assert.equal((await db.query("SELECT external_path FROM videos WHERE id=$1", [seriesId])).rows[0].external_path, "/embed/legacy");
+  await page.goto(seriesAdminUrl);
+  await page.getByRole("heading", { name: "Temporadas e episódios" }).waitFor();
+  assert.equal(await page.locator('input[name=video], input[name=externalUrl]').count(), 0);
   // Revoked login must never be shown as success.
   await db.query('DELETE FROM sessions');
   await popup.getByRole("button", { name: "Salvar vídeo", exact: true }).click();

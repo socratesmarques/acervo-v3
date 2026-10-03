@@ -52,7 +52,6 @@ export default function Video() {
       </dl>
     </div>
     {series && <SeriesBrowser key={video.id} series={series} seasons={seasons} video={video} />}
-    {isSeries && video.sourceType !== "collection" && <details className="legacy-series"><summary>Vídeo original da série</summary><Playback video={video} /></details>}
     <VideoRow title="Mais desse universo" videos={related} />
   </div>;
 }
