@@ -138,6 +138,41 @@ test('séries: migration, organização, episódios e acesso', async (t) => {
     assert.equal(linked.statusCode, 200, linked.body); assert.equal(linked.json().published, false); assert.equal(linked.json().externalUrl, 'https://www.youtube.com/embed/imported');
     await request('DELETE', `/api/videos/${id}`);
   });
+  await t.test('envio rápido: destinos, publicação, numeração, duplicados e permissões', async () => {
+    const options = await request('GET', '/api/admin/import-options');
+    assert.equal(options.statusCode, 200, options.body);
+    assert.equal(options.json().userId, admin.id);
+    assert(options.json().series.some((s) => s.id === series));
+    assert.equal(options.json().seasons.find((s) => s.id === s2).nextEpisodeNumber, 3);
+    assert.equal((await request('GET', '/api/admin/import-options', undefined, viewer)).statusCode, 403);
+    assert.equal((await request('GET', '/api/admin/import-options', undefined, null)).statusCode, 401);
+    const data = { title: 'Envio rápido', externalUrl: 'https://redecanais.af/player3/server.php?vid=QUICK&server=A', contentType: 'episode', seasonId: s2, published: true };
+    for (const user of [null, viewer]) assert.equal((await request('POST', '/api/admin/quick-imports', data, user)).statusCode, user ? 403 : 401);
+    assert.equal((await request('POST', '/api/admin/quick-imports', data, admin, { 'x-csrf-token': 'wrong' })).statusCode, 403);
+    assert.equal((await request('POST', '/api/admin/quick-imports', data, admin, { origin: 'https://evil.example' })).statusCode, 403);
+    for (const override of [{ contentType: 'series' }, { categoryId }, { seasonId: undefined }, { episodeNumber: 0 }, { episodeNumber: 1.5 }, { title: '' }, { published: 'true' }, { externalUrl: 'javascript:alert(1)' }])
+      assert.equal((await request('POST', '/api/admin/quick-imports', { ...data, ...override })).statusCode, 400);
+    assert.equal((await request('POST', '/api/admin/quick-imports', { ...data, seasonId: randomUUID() })).statusCode, 404);
+    const created = await request('POST', '/api/admin/quick-imports', data);
+    assert.equal(created.statusCode, 201, created.body); assert.equal(created.json().episodeNumber, 3); assert.equal(created.json().nextEpisodeNumber, 4);
+    const id = created.json().id;
+    const record = (await request('GET', `/api/videos/${id}`, undefined, viewer)).json();
+    assert.equal(record.categoryId, categoryId); assert.equal(record.published, true); assert.equal(record.seasonId, s2);
+    const duplicate = await request('POST', '/api/admin/quick-imports', { ...data, title: 'Não sobrescrever', seasonId: s1, published: false, externalUrl: 'https://redecanais.press/player3/server.php?server=A&vid=QUICK' });
+    assert.equal(duplicate.statusCode, 200, duplicate.body); assert.equal(duplicate.json().duplicate, true); assert.equal(duplicate.json().id, id); assert.equal(duplicate.json().seasonId, s2);
+    assert.equal((await request('GET', `/api/videos/${id}`)).json().title, 'Envio rápido');
+    assert.equal((await request('POST', '/api/admin/quick-imports', { ...data, externalUrl: 'https://www.youtube.com/embed/conflict', episodeNumber: 3 })).statusCode, 409);
+    const manual = await request('POST', '/api/admin/quick-imports', { ...data, externalUrl: 'https://www.youtube.com/embed/manual', episodeNumber: 8, published: false });
+    assert.equal(manual.statusCode, 201, manual.body); assert.equal(manual.json().episodeNumber, 8); assert.equal(manual.json().nextEpisodeNumber, 9);
+    assert.equal((await request('GET', `/api/videos/${manual.json().id}`, undefined, viewer)).statusCode, 404);
+    const otherCategory = (await request('POST', '/api/categories', { name: 'Outra categoria rápida' })).json().id;
+    const movie = await request('POST', '/api/admin/quick-imports', { title: 'Filme rápido', externalUrl: 'https://www.youtube.com/embed/quickmovie', contentType: 'movie', categoryId: otherCategory });
+    assert.equal(movie.statusCode, 201, movie.body); assert.equal(movie.json().published, false);
+    assert.equal((await request('GET', `/api/videos/${movie.json().id}`)).json().categoryId, otherCategory);
+    assert.equal((await request('POST', '/api/admin/quick-imports', { title: 'Inválido', externalUrl: 'https://www.youtube.com/embed/a', contentType: 'movie', categoryId: randomUUID() })).statusCode, 404);
+    for (const videoId of [id, manual.json().id, movie.json().id]) await request('DELETE', `/api/videos/${videoId}`);
+    await request('DELETE', `/api/categories/${otherCategory}`);
+  });
   await t.test('exclusão exige remover episódios e temporadas explicitamente', async () => {
     assert.equal((await request('DELETE', `/api/videos/${series}`)).statusCode, 409);
     assert.equal((await request('DELETE', `/api/seasons/${s1}`)).statusCode, 409);
