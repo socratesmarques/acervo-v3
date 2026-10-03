@@ -1,5 +1,7 @@
 # ACERVO 1.3 — Filmes e séries
 
+> Guia histórico da classificação inicial. Para a versão atual com temporadas e episódios, consulte [ATUALIZAR-TEMPORADAS.md](ATUALIZAR-TEMPORADAS.md).
+
 ## Funcionalidade
 
 Admin → Enviar vídeo e Editar vídeo agora possuem Tipo de conteúdo: Filme ou Série.

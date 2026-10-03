@@ -75,7 +75,7 @@ export default async function libraryRoutes(app) {
       .parse(req.body);
     const video = await accessibleVideo(data.videoId, req.user);
     if (video.status !== "ready") fail(409, "Vídeo ainda não está pronto.");
-    if (video.source_type === "external") fail(409, "O player externo não oferece sincronização de progresso.");
+    if (video.source_type !== "upload") fail(409, "Somente vídeos enviados oferecem sincronização de progresso.");
     const position = Math.min(data.position, video.duration),
       completed = position >= video.duration * 0.95 && video.duration > 0;
     await query(

@@ -1,6 +1,6 @@
 # ACERVO · Plataforma pessoal de vídeos
 
-React + Vite + Tailwind, Fastify, PostgreSQL, FFmpeg e HLS. Versão 1.3.0 — classificação de filmes e séries, com domínios centralizados por provedor.
+React + Vite + Tailwind, Fastify, PostgreSQL, FFmpeg e HLS. Filmes, séries com temporadas e episódios, e domínios centralizados por provedor.
 
 O catálogo fictício foi substituído pela API. A aplicação começa vazia e sem senha universal. O catálogo e os arquivos hospedados pelo ACERVO exigem autenticação. Vídeos externos seguem também as regras de acesso do provedor; sua URL pode ser acessada fora do ACERVO.
 
@@ -10,7 +10,7 @@ A extensão **Enviar para ACERVO** preenche o nome e o player da página aberta 
 
 ## Atualizar uma instalação existente
 
-Leia [ATUALIZAR-FILMES-SERIES.md](ATUALIZAR-FILMES-SERIES.md). Preserve seu `.env` e os volumes existentes.
+Leia [ATUALIZAR-TEMPORADAS.md](ATUALIZAR-TEMPORADAS.md) para instalar a estrutura de temporadas e episódios e organizar o acervo existente. Preserve seu `.env` e os volumes existentes.
 
 ## Iniciar com Docker
 
@@ -60,6 +60,7 @@ docker compose down
 | --- | --- |
 | Catálogo | Home, recentes, mais assistidos, categorias, busca e paginação |
 | Administração | Dashboard, upload, edição, exclusão, publicação, despublicação e thumbnail |
+| Séries | Temporadas, episódios por link/upload, vínculo de vídeos existentes, ordem e próximo episódio |
 | Categorias | Criar, editar e excluir; proteção de categorias ainda usadas |
 | Contas | Login, logout, perfil, troca de senha e criação de admin/espectador |
 | Favoritos | Adicionar/remover e listar por usuário |
