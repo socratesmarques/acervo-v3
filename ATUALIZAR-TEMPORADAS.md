@@ -2,8 +2,8 @@
 
 ## Como usar
 
-1. Em **Admin → Enviar vídeo**, selecione **Série**, preencha título, categoria e capa opcional. Clique **Criar série e adicionar temporadas**. Não precisa enviar um vídeo nessa etapa.
-2. Na edição da série, em **Temporadas e episódios**, crie a temporada 1 (o nome é opcional).
+1. Em **Admin → Séries → Nova série**, preencha nome, descrição, categoria e capa opcional. Clique **Criar série**. Não há campo de vídeo ou link.
+2. A opção **Criar temporada 1 automaticamente** vem marcada. Você já entra no gerenciamento de temporadas e episódios. Para alterar os dados da série, abra **Editar nome, descrição, categoria e capa**.
 3. Selecione a temporada e clique **Adicionar episódio**. Preencha número, título e o link de incorporação ou envie um arquivo. Cada episódio possui publicação e thumbnail próprias.
 4. Repita para os demais episódios e temporadas. Os números determinam a ordem; não é possível repetir um número na mesma temporada.
 5. No catálogo, abra a série, selecione a temporada e clique no episódio. **Próximo episódio** segue a ordem numérica, inclusive para a temporada seguinte.
@@ -14,7 +14,7 @@ A série e o episódio precisam estar publicados; arquivos enviados precisam ter
 
 **Mover / renumerar** permite mudar um episódio para outra temporada da mesma série ou corrigir seu número. Para vincular a outra série, abra a série de destino e use o link do episódio no formulário de vínculo.
 
-Uma série antiga mantém seu vídeo/link original, disponível em **Vídeo original da série**. Nada é convertido automaticamente em episódio: não é possível descobrir a temporada e a numeração a partir de qualquer URL. Para reutilizar esse vídeo como episódio: se ainda não há temporadas nessa série antiga, altere-a para Filme; crie uma nova série e vincule o vídeo antigo à temporada desejada. O ID, a mídia e o histórico do vídeo continuam os mesmos.
+Séries antigas aparecem na nova aba com o mesmo ID, temporadas e episódios. Seus arquivos e links originais são preservados no banco, mas o player avulso não aparece mais na página da série. Nenhum vídeo é convertido automaticamente em episódio. Os episódios continuam tendo seus próprios players.
 
 ## Atualizar no Windows
 
@@ -65,6 +65,9 @@ O APK que usa `server.url` para abrir seu site receberá a interface ao fechar e
 - Novas séries sem mídia usam `source_type=collection`, `content_type=series`, `status=ready`.
 - Episódios usam os mesmos pipelines, players, permissões, favoritos e histórico dos vídeos, com um ID individual.
 - Catálogo e busca mostram séries/filmes; episódios aparecem dentro da série, no histórico e nos favoritos individuais.
+- `GET /api/admin/series`: lista administrativa com busca, paginação e contagens de temporadas/episódios.
+- `POST /api/series`: cria apenas metadata; aceita `title`, `description`, `categoryId`, `published` e `firstSeason` (padrão true). Rejeita campos de mídia.
+- `PUT /api/series/:id`: edita metadata/publicação, preservando mídias legadas.
 - `GET /api/series/:id/seasons`: temporadas ordenadas com seus episódios, respeitando publicação.
 - `POST /api/series/:id/seasons`: `{ "number": 1, "title": "" }` (admin).
 - `PUT /api/seasons/:id`: altera número/nome (admin).
@@ -85,4 +88,6 @@ Na pasta `frontend`: `npm run lint` e `npm run build`.
 
 Após o build, na pasta `backend`: `npx playwright install chromium` e `npm run test:browser`. O fluxo inclui o cadastro de duas temporadas/episódios, vínculo de vídeo existente, seleção, próximo episódio e layout móvel. O iframe externo é simulado para manter o teste independente do provedor. A validação física em TV é feita na instalação do usuário.
 
-Validação desta alteração: suites de API/migrations aprovadas, incluindo nove cenários novos de séries; FFmpeg real gerou um episódio HLS; lint e build aprovados. O fluxo Chromium completo passou com segurança de origem habilitada, sem erros de JavaScript, incluindo duas temporadas, cadastro e vínculo de episódios, troca de player, próximo episódio e layout de 390 px. Capturas de desktop e celular foram inspecionadas. Não houve teste desta interface em TV física nem atualização dos containers do usuário.
+A aba Séries utiliza a estrutura existente da migration 005; não exige uma nova migration.
+
+Validação da estrutura inicial de temporadas: suites de API/migrations aprovadas, incluindo nove cenários novos de séries; FFmpeg real gerou um episódio HLS; lint e build aprovados. O fluxo Chromium completo passou com segurança de origem habilitada, sem erros de JavaScript, incluindo duas temporadas, cadastro e vínculo de episódios, troca de player, próximo episódio e layout de 390 px. Capturas de desktop e celular foram inspecionadas. Não houve teste desta interface em TV física nem atualização dos containers do usuário.

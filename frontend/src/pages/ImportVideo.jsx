@@ -38,7 +38,7 @@ function ImportForm({ hash }) {
     {!categories.data.items.length ? <div className="empty-state"><p>Crie uma categoria primeiro. Depois volte a esta aba e atualize a página.</p><Link to="/admin/categories" target="_blank" rel="noopener noreferrer">Criar categoria</Link></div> :
     <form className="form-stack upload-form" onSubmit={submit}><fieldset disabled={busy}>
       <label>Título<input name="title" required maxLength={160} defaultValue={initial.data.title} /></label>
-      <label>Tipo de conteúdo<select name="contentType" defaultValue="movie"><option value="movie">Filme</option><option value="series">Série</option></select></label>
+      <input type="hidden" name="contentType" value="movie" /><p className="form-hint">Este player será salvo como vídeo. Para episódios, use o envio rápido da extensão. Para organizar uma série, <Link to="/admin/series/new">crie a série na aba Séries</Link>.</p>
       <label>Categoria<select name="categoryId" required defaultValue=""><option value="" disabled>Selecione uma categoria</option>{categories.data.items.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
       <label>Descrição<textarea name="description" maxLength={10000} rows={5} defaultValue={initial.data.description} /></label>
       <label>URL do player<input type="url" name="externalUrl" required maxLength={4096} defaultValue={initial.data.externalUrl} /><span className="form-hint">O domínio será resolvido pelo provedor cadastrado. A capa pode ser adicionada após salvar.</span></label>

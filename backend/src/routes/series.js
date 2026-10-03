@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { config } from "../config.js";
 import { query, transaction } from "../db.js";
 import { admin, fail, uuid } from "../security.js";
-import { accessibleVideo, dto, selectVideo, visibleVideo } from "../catalog.js";
+import { accessibleVideo, dto, selectVideo, visibleVideo, listVideos } from "../catalog.js";
 const seasonData = z.object({
   number: z.number().int().min(1).max(1000),
   title: z.string().trim().max(160).default(""),
@@ -11,7 +12,44 @@ const episodeData = z.object({
   seasonId: uuid,
   episodeNumber: z.number().int().min(1).max(10000),
 }).strict();
+const seriesMetadata = z.object({
+  title: z.string().trim().min(1).max(160),
+  description: z.string().max(10000).default(""),
+  categoryId: uuid,
+  published: z.boolean().default(false),
+}).strict();
 export default async function seriesRoutes(app) {
+  app.get("/api/admin/series", { preHandler: admin }, async (req) => {
+    const filter = z.object({
+      q: z.string().max(120).optional(),
+      limit: z.coerce.number().int().min(1).max(100).default(20),
+      offset: z.coerce.number().int().min(0).max(1000000).default(0),
+    }).parse(req.query);
+    const result = await listVideos(req.user, { ...filter, contentType: "series" }, true);
+    const { rows } = await query(`SELECT v.id,
+      (SELECT count(*)::int FROM seasons WHERE series_id=v.id) AS seasons,
+      (SELECT count(*)::int FROM videos e JOIN seasons s ON s.id=e.season_id WHERE s.series_id=v.id) AS episodes
+      FROM videos v WHERE v.id=ANY($1::uuid[])`, [result.items.map((v) => v.id)]);
+    const counts = new Map(rows.map((r) => [r.id, r]));
+    return { ...result, items: result.items.map((v) => ({ ...v, seasonCount: counts.get(v.id)?.seasons || 0, episodeCount: counts.get(v.id)?.episodes || 0 })) };
+  });
+  app.post("/api/series", { preHandler: admin }, async (req, reply) => {
+    const data = seriesMetadata.extend({ firstSeason: z.boolean().default(true) }).parse(req.body);
+    const id = randomUUID();
+    await transaction(async (db) => {
+      await db.query("INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,source_type,content_type,status,published_at) VALUES($1,$2,$3,$4,$5,$6,$7,'collection','series','ready',CASE WHEN $6 THEN now() ELSE NULL END)",
+        [id, data.title, data.description, data.categoryId, req.user.id, data.published, config.STORAGE_DRIVER]);
+      if (data.firstSeason) await db.query("INSERT INTO seasons(id,series_id,number) VALUES($1,$2,1)", [randomUUID(), id]);
+    });
+    return reply.code(201).send(dto(await accessibleVideo(id, req.user)));
+  });
+  app.put("/api/series/:id", { preHandler: admin }, async (req) => {
+    const id = uuid.parse(req.params.id), data = seriesMetadata.parse(req.body);
+    const result = await query("UPDATE videos SET title=$2,description=$3,category_id=$4,published=$5,published_at=CASE WHEN $5 AND status='ready' THEN COALESCE(published_at,now()) ELSE published_at END,updated_at=now() WHERE id=$1 AND content_type='series' RETURNING id",
+      [id, data.title, data.description, data.categoryId, data.published]);
+    if (!result.rowCount) fail(404, "Série não encontrada.");
+    return dto(await accessibleVideo(id, req.user));
+  });
   app.get("/api/series/:id/seasons", async (req) => {
     const id = uuid.parse(req.params.id);
     const series = await accessibleVideo(id, req.user);

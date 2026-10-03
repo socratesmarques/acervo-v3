@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Link,
   NavLink,
+  Navigate,
   Route,
   Routes,
   useParams,
@@ -9,6 +10,7 @@ import {
 import {
   Upload,
   Film,
+  Tv,
   Folder,
   Users,
   LayoutDashboard,
@@ -18,7 +20,8 @@ import {
 import useData from "../hooks/useData";
 import { api } from "../services/api";
 import VideoForm from "../components/admin/VideoForm";
-import SeriesManager, { NewEpisode } from "../components/admin/SeriesManager";
+import { NewEpisode } from "../components/admin/SeriesManager";
+import SeriesList, { NewSeries, EditSeries } from "./AdminSeries";
 import ImportVideo from "./ImportVideo";
 import Providers from "./Providers";
 import Feedback from "../components/Feedback";
@@ -78,7 +81,7 @@ function Dashboard() {
       <h2>Adicionados recentemente</h2>
       <div className="admin-recent">
         {recent.items.map((v) => (
-          <Link to={`/admin/videos/${v.id}`} key={v.id}>
+          <Link to={`/admin/${v.contentType === "series" ? "series" : "videos"}/${v.id}`} key={v.id}>
             <div>
               <strong>{v.title}</strong>
               <p>
@@ -100,7 +103,7 @@ function VideoList() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState("");
   const state = useData(
-    (signal) => api(`/admin/videos?limit=20&offset=${page * 20}`, { signal }),
+    (signal) => api(`/admin/videos?contentType=movie&limit=20&offset=${page * 20}`, { signal }),
     [page],
   );
   useEffect(() => {
@@ -147,7 +150,7 @@ function VideoList() {
   return (
     <>
       <div className="section-title">
-        <h1>Vídeos</h1>
+        <h1>Filmes e vídeos</h1>
         <div className="hero-buttons">
           <button className="button button-glass" onClick={state.reload}>
             <RefreshCw size={17} /> Atualizar
@@ -283,10 +286,11 @@ function EditPage() {
     [id],
   );
   if (state.loading || state.error) return <Feedback {...state} />;
+  if (state.data.video.contentType === "series") return <Navigate to={`/admin/series/${id}`} replace />;
   return (
     <>
       <VideoForm key={id} video={state.data.video} categories={state.data.categories.items} />
-      {state.data.video.contentType === "series" && <SeriesManager key={`seasons-${id}`} series={state.data.video} />}
+
     </>
   );
 }
@@ -473,7 +477,8 @@ export default function Admin() {
         <p className="eyebrow">ESTÚDIO ACERVO</p>
         {[
           ["", "Dashboard", LayoutDashboard],
-          ["/videos", "Vídeos", Film],
+          ["/videos", "Filmes e vídeos", Film],
+          ["/series", "Séries", Tv],
           ["/upload", "Enviar vídeo", Upload],
           ["/categories", "Categorias", Folder],
           ["/users", "Pessoas", Users],
@@ -491,6 +496,9 @@ export default function Admin() {
           <Route path="videos" element={<VideoList />} />
           <Route path="videos/:id" element={<EditPage />} />
           <Route path="upload" element={<UploadPage />} />
+          <Route path="series" element={<SeriesList />} />
+          <Route path="series/new" element={<NewSeries />} />
+          <Route path="series/:id" element={<EditSeries />} />
           <Route path="series/:seriesId/seasons/:seasonId/new" element={<NewEpisode />} />
           <Route path="categories" element={<Categories />} />
           <Route path="users" element={<UserList />} />

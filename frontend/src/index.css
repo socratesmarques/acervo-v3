@@ -1289,3 +1289,18 @@ progress {
 .legacy-series summary { cursor: pointer; margin-bottom: 1rem; padding: .8rem; }
 @media (max-width: 900px) { .episode-grid { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .season-toolbar { align-items: stretch; } .season-toolbar label { width: 100%; } .episode-card { padding: .5rem 0; gap: .75rem; } .series-manager .table-actions { flex-wrap: wrap; } }
+
+.series-intro { margin: 1rem 0 1.5rem; }
+.series-metadata { margin: 1.5rem 0; }
+.series-metadata summary { cursor: pointer; padding: .8rem 0; color: #c4ef65; }
+.series-metadata .upload-form { margin-top: 1rem; }
+.admin-series-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+.admin-series-card { min-width: 0; background: #ffffff04; border-radius: 14px; overflow: hidden; }
+.admin-series-cover { display: block; position: relative; aspect-ratio: 16 / 9; background: #171b21; }
+.admin-series-cover img { width: 100%; height: 100%; object-fit: cover; }
+.admin-series-cover > svg { position: absolute; right: 12px; bottom: 12px; filter: drop-shadow(0 1px 4px #000); }
+.admin-series-info { padding: 1.1rem; }
+.admin-series-info h2 { font-size: 1.3rem; overflow-wrap: anywhere; }
+.admin-series-info p { margin: .5rem 0; font-size: .9rem; }
+.admin-series-info > .button { margin: .5rem 0 1rem; }
+@media (max-width: 700px) { .admin-series-grid { grid-template-columns: 1fr; } }

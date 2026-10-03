@@ -60,7 +60,7 @@ docker compose down
 | --- | --- |
 | Catálogo | Home, recentes, mais assistidos, categorias, busca e paginação |
 | Administração | Dashboard, upload, edição, exclusão, publicação, despublicação e thumbnail |
-| Séries | Temporadas, episódios por link/upload, vínculo de vídeos existentes, ordem e próximo episódio |
+| Séries | Aba própria no admin, cadastro sem vídeo/link, temporada 1 automática, episódios por link/upload, vínculo de vídeos existentes e próximo episódio |
 | Categorias | Criar, editar e excluir; proteção de categorias ainda usadas |
 | Contas | Login, logout, perfil, troca de senha e criação de admin/espectador |
 | Favoritos | Adicionar/remover e listar por usuário |

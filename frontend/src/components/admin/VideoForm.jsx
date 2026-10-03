@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, upload } from "../../services/api";
 export default function VideoForm({ video, categories, maxUploadMB, episodeContext }) {
-  const [contentType, setContentType] = useState(video?.contentType || (episodeContext ? "episode" : "movie"));
-  const [selectedSource, setSourceType] = useState(video?.sourceType || (episodeContext ? "external" : "upload"));
-  const sourceType = !video && contentType === "series" ? "collection" : selectedSource;
+  const contentType = video?.contentType || (episodeContext ? "episode" : "movie");
+  const [sourceType, setSourceType] = useState(video?.sourceType || (episodeContext ? "external" : "upload"));
   const seriesId = episodeContext?.series.id || video?.seriesId;
-  const returnPath = seriesId ? `/admin/videos/${seriesId}` : "/admin/videos";
+  const returnPath = seriesId ? `/admin/series/${seriesId}` : "/admin/videos";
   const navigate = useNavigate(),
     [busy, setBusy] = useState(false),
     [progress, setProgress] = useState(0),
@@ -52,11 +51,7 @@ export default function VideoForm({ video, categories, maxUploadMB, episodeConte
         f.set("sourceType", sourceType);
         f.set("published", String(f.has("published")));
         if (!thumbnail?.size) f.delete("thumbnail");
-        const created = await upload("/videos", f, setProgress);
-        if (contentType === "series") {
-          navigate(`/admin/videos/${created.id}`);
-          return;
-        }
+        await upload("/videos", f, setProgress);
       }
       navigate(returnPath);
     } catch (e) {
@@ -80,16 +75,8 @@ export default function VideoForm({ video, categories, maxUploadMB, episodeConte
       ) : (
         <form onSubmit={submit} className="form-stack upload-form">
           <fieldset disabled={busy}>
-            {contentType === "episode" ? (
-              <input type="hidden" name="contentType" value="episode" />
-            ) : (
-              <label>Tipo de conteúdo
-                <select name="contentType" value={contentType} onChange={(e) => setContentType(e.target.value)} required>
-                  {sourceType !== "collection" || !video ? <option value="movie">Filme</option> : null}
-                  <option value="series">Série</option>
-                </select>
-              </label>
-            )}
+            <input type="hidden" name="contentType" value={contentType} />
+            {!episodeContext && !video && <p className="form-hint">Para organizar temporadas e episódios, <Link to="/admin/series/new">crie uma série na aba Séries</Link>.</p>}
             {episodeContext && <>
               <input type="hidden" name="seasonId" value={episodeContext.season.id} />
               <label>Número do episódio
@@ -97,14 +84,12 @@ export default function VideoForm({ video, categories, maxUploadMB, episodeConte
                   defaultValue={Math.max(0, ...episodeContext.season.episodes.map((e) => e.episodeNumber)) + 1} />
               </label>
             </>}
-            {sourceType === "collection" ? (
-              <p className="form-hint">Salve a série e depois cadastre as temporadas e os episódios. Cada episódio terá seu próprio link ou arquivo.</p>
-            ) : <label>Origem do vídeo
+            <label>Origem do vídeo
               <select value={sourceType} disabled={!!video} onChange={(e) => setSourceType(e.target.value)}>
                 <option value="upload">Upload de arquivo</option>
                 <option value="external">Vídeo externo</option>
               </select>
-            </label>}
+            </label>
             {sourceType === "external" && <>
               <label>URL de incorporação
                 <input type="url" name="externalUrl" required maxLength={4096} defaultValue={video?.externalUrl || ""} placeholder="https://www.youtube.com/embed/ID_DO_VIDEO" />
@@ -204,7 +189,7 @@ export default function VideoForm({ video, categories, maxUploadMB, episodeConte
             </p>
           )}
           <button disabled={busy} className="button button-accent">
-            {busy ? "Aguarde…" : video ? "Salvar alterações" : sourceType === "collection" ? "Criar série e adicionar temporadas" : sourceType === "external" ? "Cadastrar vídeo externo" : "Enviar vídeo"}
+            {busy ? "Aguarde…" : video ? "Salvar alterações" : sourceType === "external" ? "Cadastrar vídeo externo" : "Enviar vídeo"}
           </button>
         </form>
       )}

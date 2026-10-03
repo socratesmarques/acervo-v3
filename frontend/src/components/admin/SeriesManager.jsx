@@ -77,7 +77,6 @@ export default function SeriesManager({ series }) {
     } }), "Publicação atualizada.");
   }
   return <section id="temporadas" className="series-manager">
-    <p className="eyebrow">ORGANIZAR SÉRIE</p>
     <h2>Temporadas e episódios</h2>
     <button type="button" className="button button-glass" disabled={busy || state.loading} onClick={state.reload}>Atualizar episódios</button>
     <p className="muted">Crie uma temporada e adicione os episódios na ordem desejada. A série e seus episódios precisam estar publicados para aparecer aos espectadores.</p>

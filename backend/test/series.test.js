@@ -173,6 +173,36 @@ test('séries: migration, organização, episódios e acesso', async (t) => {
     for (const videoId of [id, manual.json().id, movie.json().id]) await request('DELETE', `/api/videos/${videoId}`);
     await request('DELETE', `/api/categories/${otherCategory}`);
   });
+  await t.test('aba séries: criação sem mídia, temporada inicial, edição, busca e autorização', async () => {
+    const data = { title: 'Série independente', description: 'Sem vídeo avulso', categoryId, published: true };
+    assert.equal((await request('GET', '/api/admin/series', undefined, viewer)).statusCode, 403);
+    assert.equal((await request('POST', '/api/series', data, viewer)).statusCode, 403);
+    assert.equal((await request('POST', '/api/series', data, null)).statusCode, 401);
+    assert.equal((await request('POST', '/api/series', data, admin, { 'x-csrf-token': 'wrong' })).statusCode, 403);
+    for (const override of [{ title: '' }, { sourceType: 'external' }, { externalUrl: 'https://www.youtube.com/embed/a' }, { video: 'file.mp4' }, { firstSeason: 'true' }])
+      assert.equal((await request('POST', '/api/series', { ...data, ...override })).statusCode, 400);
+    assert.equal((await request('POST', '/api/series', { ...data, categoryId: randomUUID() })).statusCode, 409);
+    const created = await request('POST', '/api/series', data);
+    assert.equal(created.statusCode, 201, created.body);
+    const id = created.json().id;
+    assert.equal(created.json().sourceType, 'collection'); assert.equal(created.json().source, null); assert.equal(created.json().externalUrl, null);
+    let seasons = (await request('GET', `/api/series/${id}/seasons`)).json().items;
+    assert.equal(seasons.length, 1); assert.equal(seasons[0].number, 1); assert.equal(seasons[0].episodes.length, 0);
+    const list = await request('GET', '/api/admin/series?q=independente&limit=1');
+    assert.equal(list.json().total, 1); assert.equal(list.json().items[0].seasonCount, 1); assert.equal(list.json().items[0].episodeCount, 0);
+    assert.equal((await request('GET', '/api/admin/series?q=independente&offset=1')).json().items.length, 0);
+    assert.equal((await request('GET', '/api/admin/videos?contentType=movie')).json().items.some((v) => v.id === id), false);
+    assert.equal((await request('PUT', `/api/series/${id}`, { ...data, title: 'Renomeada', published: false })).statusCode, 200);
+    assert.equal((await request('GET', `/api/videos/${id}`, undefined, viewer)).statusCode, 404);
+    assert.equal((await request('PUT', `/api/series/${ep1}`, data)).statusCode, 404);
+    await request('DELETE', `/api/seasons/${seasons[0].id}`);
+    await request('DELETE', `/api/videos/${id}`);
+    const empty = await request('POST', '/api/series', { ...data, firstSeason: false });
+    assert.equal(empty.statusCode, 201, empty.body);
+    seasons = (await request('GET', `/api/series/${empty.json().id}/seasons`)).json().items;
+    assert.equal(seasons.length, 0);
+    await request('DELETE', `/api/videos/${empty.json().id}`);
+  });
   await t.test('exclusão exige remover episódios e temporadas explicitamente', async () => {
     assert.equal((await request('DELETE', `/api/videos/${series}`)).statusCode, 409);
     assert.equal((await request('DELETE', `/api/seasons/${s1}`)).statusCode, 409);
