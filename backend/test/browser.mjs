@@ -361,19 +361,29 @@ try {
   assert.equal(encoded.title, "");
   assert.deepEqual(encoded.urls, ["https://catalog.example/player3/server.php?vid=ABC&server=B"]);
   await fixture.close();
-  // Exercita o popup real com APIs chrome simuladas; o extrator foi testado acima.
+  // Real popup and same-origin bridge/API; browser extension APIs are simulated.
+  const { requestOnSite } = await import("../../extension/bridge.js");
   const popup = await context.newPage();
-  await popup.setViewportSize({ width: 380, height: 760 });
+  await popup.setViewportSize({ width: 400, height: 760 });
+  popup.on("pageerror", (e) => errors.push(e.message));
+  await popup.exposeFunction("acervoRpc", async (message) => {
+    return page.evaluate(requestOnSite, { origin: message.origin, operation: message.action === "save" ? "save" : "options", body: message.body });
+  });
   await popup.addInitScript(({ captured }) => {
     window.sentToAcervo = null;
     window.close = () => {};
     window.chrome = {
       storage: {
-        local: { get: async () => ({}), set: async () => {} },
+        local: {
+          get: async () => JSON.parse(localStorage.getItem("extensionSettings") || "{}"),
+          set: async (data) => localStorage.setItem("extensionSettings", JSON.stringify({ ...JSON.parse(localStorage.getItem("extensionSettings") || "{}"), ...data })),
+        },
         session: { get: async () => ({}), set: async () => {}, remove: async () => {} },
       },
       tabs: { query: async () => [{ id: 1, url: "https://catalog.example/movie" }], create: async data => { window.sentToAcervo = data.url; } },
-      scripting: { executeScript: async () => [{ result: captured }] },
+      scripting: { executeScript: async () => [{ result: JSON.parse(localStorage.getItem("captureOverride") || "null") || captured }] },
+      permissions: { request: async () => true, contains: async () => true },
+      runtime: { sendMessage: (message) => window.acervoRpc(message) },
     };
   }, { captured });
   await popup.route("https://extension.example/**", async route => {
@@ -386,16 +396,55 @@ try {
   assert.equal(await popup.getByLabel("Nome do filme ou série").inputValue(), "Patrulha Canina");
   await popup.getByLabel("Endereço do seu ACERVO").fill(origin);
   await popup.screenshot({ path: path.join(root, "backend/test-results/extension-popup.png"), fullPage: true });
-  await popup.getByRole("button", { name: "Enviar para ACERVO", exact: true }).click();
+  await popup.getByRole("button", { name: "Revisar no painel", exact: true }).click();
   await popup.waitForFunction(() => window.sentToAcervo !== null);
   const target = new URL(await popup.evaluate(() => window.sentToAcervo));
   assert.equal(target.origin, origin);
   assert.equal(target.pathname, "/admin/import");
   assert.equal(JSON.parse(decodeURIComponent(target.hash.slice(1))).title, "Patrulha Canina");
+  // Connect once and remember an episode destination. Saves go through the real bridge/API.
+  await popup.getByRole("button", { name: "Conectar", exact: true }).click();
+  await popup.getByText("Conectado. Escolha o destino uma vez; ele será lembrado.").waitFor();
+  await popup.getByLabel("Adicionar como").selectOption("episode");
+  await popup.locator("#series").selectOption({ label: "Horizontes" });
+  await popup.locator("#season").selectOption({ label: "T1" });
+  await popup.getByLabel("Publicar ao salvar").check();
+  await popup.screenshot({ path: path.join(root, "backend/test-results/extension-episode.png"), fullPage: true });
+  await popup.getByRole("button", { name: "Publicar episódio", exact: true }).click();
+  await popup.getByRole("status").filter({ hasText: "Episódio 2 publicado:" }).waitFor();
+  const savedEpisode = (await db.query("SELECT v.*,s.series_id FROM videos v JOIN seasons s ON s.id=v.season_id WHERE v.title=$1", [captured.title])).rows[0];
+  assert.equal(savedEpisode.series_id, seriesId); assert.equal(savedEpisode.episode_number, 2); assert.equal(savedEpisode.published, true);
+  await popup.getByRole("button", { name: "Publicar episódio", exact: true }).click();
+  await popup.getByRole("status").filter({ hasText: "Já cadastrado:" }).waitFor();
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM videos WHERE title=$1", [captured.title])).rows[0].n, 1);
+  // Reopen on the next source page: preferences restored, only the save click is necessary.
+  await popup.evaluate((captured) => localStorage.setItem("captureOverride", JSON.stringify({ ...captured, title: "Próximo episódio capturado", urls: ["https://redecanais.af/player3/server.php?vid=NEXT"] })), captured);
+  await popup.reload();
+  await popup.getByRole("button", { name: "Publicar episódio", exact: true }).waitFor({ state: "visible" });
+  await popup.waitForFunction(() => !document.querySelector('#send').disabled);
+  assert.equal(await popup.locator('#series').inputValue(), seriesId);
+  assert.equal(await popup.locator('#episode').inputValue(), '');
+  await popup.getByRole("button", { name: "Publicar episódio", exact: true }).click();
+  await popup.getByRole("status").filter({ hasText: "Episódio 3 publicado:" }).waitFor();
+  // Change category/mode, then reopen: the movie destination is remembered too.
+  await popup.evaluate((captured) => localStorage.setItem("captureOverride", JSON.stringify({ ...captured, title: "Vídeo de outra categoria", urls: ["https://redecanais.af/player3/server.php?vid=MOVIEFAST"] })), captured);
+  await popup.getByLabel("Adicionar como").selectOption("movie");
+  await popup.locator('#category').selectOption({ label: "Viagens" });
+  await popup.getByLabel("Publicar ao salvar").uncheck();
+  await popup.reload();
+  await popup.waitForFunction(() => !document.querySelector('#send').disabled);
+  assert.equal(await popup.getByLabel("Adicionar como").inputValue(), 'movie');
+  await popup.getByRole("button", { name: "Salvar vídeo", exact: true }).click();
+  await popup.getByRole("status").filter({ hasText: "Vídeo salvo como rascunho:" }).waitFor();
+  await popup.screenshot({ path: path.join(root, "backend/test-results/extension-success.png"), fullPage: true });
+  // Revoked login must never be shown as success.
+  await db.query('DELETE FROM sessions');
+  await popup.getByRole("button", { name: "Salvar vídeo", exact: true }).click();
+  await popup.getByRole("status").filter({ hasText: "Entre como administrador" }).waitFor();
   await popup.close();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: login, categoria, upload, HLS playback, favorito, histórico e retomada, busca, admin, vídeo externo e mudança de domínio no painel com CSP dinâmica e iframe simulado, temporadas e episódios (criação, vínculo, seleção e próximo episódio), layout 390px e alteração de senha. Sem erros de JavaScript.",
+    "PASS: login, categoria, upload, HLS playback, favorito, histórico e retomada, busca, admin, vídeo externo e mudança de domínio no painel com CSP dinâmica e iframe simulado, temporadas e episódios (criação, vínculo, seleção e próximo episódio), layout 390px e alteração de senha. Extensão rápida: destino lembrado, envio direto, duplicados, próximo número, categoria e sessão expirada. Sem erros de JavaScript.",
   );
 } catch (error) {
   await page

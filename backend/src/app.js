@@ -8,6 +8,7 @@ import { config } from "./config.js";
 import { authenticate, checkCsrf, checkOrigin } from "./security.js";
 import { query } from "./db.js";
 import authRoutes from "./routes/auth.js";
+import quickImportRoutes from "./routes/quick-imports.js";
 import importRoutes from "./routes/imports.js";
 import providerRoutes from "./routes/providers.js";
 import seriesRoutes from "./routes/series.js";
@@ -98,6 +99,7 @@ export async function buildApp({ logger = true } = {}) {
   await app.register(seriesRoutes);
   await app.register(providerRoutes);
   await app.register(importRoutes);
+  await app.register(quickImportRoutes);
   await app.register(libraryRoutes);
   return app;
 }

@@ -6,7 +6,7 @@ O catálogo fictício foi substituído pela API. A aplicação começa vazia e s
 
 ## Enviar filmes pelo navegador
 
-A extensão **Enviar para ACERVO** preenche o nome e o player da página aberta e abre uma revisão autenticada no painel. Consulte [instalação e uso](extension/README.md).
+A extensão **Enviar para ACERVO 2.0** captura nome/player e salva filmes ou episódios diretamente. Lembra categoria, série, temporada e publicação, com numeração automática no servidor e proteção contra duplicados. O fluxo de revisão no painel continua disponível. Consulte [atualização, conexão e uso](extension/README.md).
 
 ## Atualizar uma instalação existente
 

@@ -1,8 +1,24 @@
 {
   "manifest_version": 3,
   "name": "Enviar para ACERVO",
-  "version": "1.0.0",
-  "description": "Captura título e player da página aberta para revisão no seu ACERVO.",
-  "permissions": ["activeTab", "scripting", "storage"],
-  "action": { "default_title": "Enviar para ACERVO", "default_popup": "popup.html" }
+  "version": "2.0.0",
+  "description": "Adiciona filmes e episódios ao ACERVO com destino lembrado e numeração automática.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "action": {
+    "default_title": "Enviar para ACERVO",
+    "default_popup": "popup.html"
+  },
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
 }

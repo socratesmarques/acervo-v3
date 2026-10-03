@@ -1,103 +1,90 @@
-# Enviar para ACERVO (Chrome / Edge desktop)
+# Enviar para ACERVO 2.0 — envio rápido
 
-Extensão Manifest V3 que captura o nome e a URL do player da aba aberta e leva
-os dados para revisão em `/admin/import`. Não importa todo o site, não baixa
-filmes e não publica conteúdo sem a confirmação no painel.
+Captura o nome e o player da página aberta, permite escolher o destino uma vez e salva diretamente no ACERVO. Depois da configuração, o fluxo normal tem **dois cliques**: abrir a extensão e clicar em Salvar/Publicar. Abrir a página de origem e preencher um título ausente continuam sendo passos necessários quando o site não oferece esses dados.
 
-## Atualizar o servidor no Windows
+## Atualizar a extensão já instalada
 
-Depois de incorporar a alteração ao seu repositório, atualize sua cópia local.
-Preserve `.env`, dados, configurações do Android e do Tailscale. Na pasta que
-contém `compose.yml` (por exemplo `C:\Users\Usuario\Documents\acervo-novo`),
-execute um comando por vez, parando se aparecer erro:
+1. Atualize o servidor com o backend desta versão (instruções abaixo).
+2. Atualize os arquivos na mesma pasta `extension` já carregada no Chrome/Edge. Se usa Git, `git pull` atualiza essa pasta junto do projeto. Se usa ZIP, substitua o conteúdo da pasta existente, incluindo os novos arquivos `background.js`, `bridge.js` e `shared.js`.
+3. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.0.0**.
+4. Para instalar pela primeira vez, use **Carregar sem compactação** e selecione a pasta `extension` que contém `manifest.json`. Fixe o ícone na barra do navegador.
+
+Não é necessário remover a extensão. Manter a mesma pasta/instalação preserva o endereço salvo.
+
+## Conectar uma vez
+
+1. Abra seu ACERVO em uma aba e entre como administrador.
+2. Na página de um filme ou episódio, abra a extensão. Em **Conectar ao seu ACERVO**, informe somente o endereço base, por exemplo `https://meu-acervo.example` ou `http://localhost:8080` para desenvolvimento.
+3. Clique em **Conectar** e autorize o acesso solicitado ao endereço do seu ACERVO.
+4. A extensão usa uma aba desse endereço. Se não houver uma, Conectar abre uma aba em segundo plano. Se pedir login, use **Abrir ACERVO / entrar**, autentique-se e volte à página do episódio para conectar novamente.
+
+Mantenha uma aba do ACERVO aberta. A sessão deve ser do administrador; a extensão não pede nem salva a senha. Se a sessão expirar, ela informa o erro e não mostra uma confirmação falsa.
+
+## Adicionar episódios com poucos cliques
+
+Na primeira vez:
+
+1. Escolha **Episódio de série**.
+2. Selecione a **Série** e a **Temporada**. Se a série só tem uma temporada, ela é selecionada automaticamente.
+3. Confira o título capturado. Deixe **Nº do episódio** vazio para usar o próximo número disponível (maior número atual + 1).
+4. Escolha se quer **Publicar ao salvar** ou salvar como rascunho.
+5. Clique **Salvar episódio** ou **Publicar episódio**.
+
+Nos episódios seguintes, basta abrir a extensão e salvar: série, temporada e publicação ficam lembradas. A numeração automática é calculada no servidor ao gravar, não é apenas um contador local. Um número digitado manualmente vale somente para aquele envio e nunca é guardado para o próximo.
+
+Se estiver cadastrando fora de ordem ou preenchendo uma lacuna, informe o número correto no campo. Números repetidos são rejeitados. Confira a temporada exibida antes de enviar.
+
+O episódio herda a categoria da série. Uma série em rascunho mantém seus episódios ocultos dos espectadores até também ser publicada.
+
+## Filmes e outras categorias
+
+Escolha **Filme / vídeo**, selecione a categoria e salve. A categoria fica lembrada nos próximos envios, inclusive depois de fechar a extensão. Você pode trocar entre filme e episódio sem perder a categoria do filme nem a última temporada usada em cada série. Preferências são separadas por endereço do ACERVO e usuário.
+
+Crie séries, temporadas e categorias no painel administrativo. Em **Player e mais opções → Atualizar categorias e séries**, recarregue os destinos sem fechar o popup. Se um destino salvo for excluído, selecione um válido; não será usado silenciosamente outro destino.
+
+## Nome e player
+
+- O título continua sendo capturado da página e pode ser corrigido.
+- Em páginas com vários players, confira a seleção em **Player e mais opções**.
+- Se a página Embed não tiver nome, use **Guardar nome** na página anterior. Na mesma origem, esse nome é sugerido automaticamente no Embed; confira se corresponde ao episódio. **Usar nome guardado** e **Apagar nome guardado** continuam disponíveis.
+- **Revisar no painel** mantém o fluxo antigo de abrir uma aba para revisar/salvar um rascunho. Esse fluxo não transporta a seleção de temporada do envio rápido; use Salvar episódio para cadastrar diretamente na temporada.
+- Não há busca automática do catálogo do provedor, download de arquivos ou varredura de várias páginas. A captura acontece na página ativa quando você abre a extensão.
+
+## Confirmações e repetição
+
+A confirmação informa o número efetivamente salvo e se foi publicado ou salvo como rascunho. **Abrir cadastro salvo** leva à edição para adicionar capa ou ajustar detalhes.
+
+O mesmo player, inclusive com alias de domínio ou parâmetros reordenados, não cria outro cadastro. O existente é preservado: não muda de temporada/categoria/publicação automaticamente. Para reutilizar um filme já cadastrado como episódio, use **Vincular vídeo já cadastrado** no administrador.
+
+O envio é coordenado pelo service worker da extensão e o último resultado fica guardado na sessão do navegador, para ser consultado ao reabrir o popup. Se houver falha de rede, encerramento do navegador ou nenhuma confirmação, confira o painel; reenviar o mesmo player não duplica o registro. Não há tentativas de publicação automáticas em segundo plano.
+
+## Permissões e segurança
+
+- `activeTab` e `scripting`: captura na aba atual após ação do usuário.
+- `storage`: endereço, destinos e preferências; dados capturados/último resultado usam armazenamento de sessão.
+- Permissão de host **opcional**, concedida em Conectar somente ao endereço configurado do ACERVO. O manifesto aceita endereços HTTPS porque o domínio é escolhido pelo usuário; não concede acesso automático a todos eles.
+- As requisições são feitas na origem exata do ACERVO em contexto isolado, com os cookies HttpOnly já existentes. O CSRF é obtido e usado dentro dessa aba, sem ser salvo na extensão.
+- A API mantém autenticação, administração, checagem de origem, CSRF, validação e limite de requisições. Não foi aberto CORS nem criado token permanente.
+- Chrome não separa portas na permissão de host; o código confere a origem completa, incluindo porta, antes de executar as chamadas.
+
+## Atualizar os containers no Windows
+
+Depois de incorporar a alteração no GitHub, na pasta original do projeto:
 
 ```powershell
-docker compose build api worker init web
-docker compose stop web api worker
-docker compose run --rm --no-deps init
-docker compose up -d --force-recreate api worker web
+cd C:\Users\Usuario\Documents\acervo-novo
+git switch main
+git pull --ff-only
+docker compose build api
+docker compose up -d
 ```
 
-A feature não adiciona migrations. O init mantém as migrations anteriores em dia.
-Não use `down -v`: não é necessário apagar nada. Não é necessário gerar outro APK.
+Execute um comando por vez e pare em caso de erro. Esta atualização não acrescenta migration: requer a versão com temporadas/episódios (migration 005) já instalada. Não apague volumes. Atualizar apenas a pasta da extensão não instala as novas rotas no servidor. Não precisa gerar outro APK para atualizar a extensão.
 
-## Instalar a extensão
+## Testes
 
-1. Abra `chrome://extensions` (Edge: `edge://extensions`).
-2. Ative **Modo do desenvolvedor**.
-3. Clique **Carregar sem compactação** e selecione a pasta `extension` deste projeto.
-4. Fixe **Enviar para ACERVO** na barra do navegador.
-5. Abra a página do filme e clique no ícone.
-6. Informe o endereço do seu ACERVO, por exemplo `https://desktop-qdrqsqq.tailacb07e.ts.net`.
-   Esse endereço é salvo localmente no navegador. Use somente o endereço do seu painel.
-7. Confira o nome preenchido e o player selecionado. Clique **Enviar para ACERVO**.
-8. Na nova aba, faça login como administrador se necessário. Selecione Filme/Série,
-   categoria, revise o nome e a descrição e clique **Salvar rascunho**.
-9. Abra o cadastro para adicionar a thumbnail e publicar.
+- `cd backend` → `npm test`: testes de API, permissões, validação, numeração, duplicados e isolamento da extensão.
+- Frontend: `npm run build` antes do teste de navegador existente.
+- `cd backend` → `npm run test:browser`: popup real servido localmente, bridge e API reais, com as APIs `chrome.*` simuladas; verifica seleção persistida, envio de episódios consecutivos, categoria, duplicados e sessão expirada.
 
-Depois de atualizar arquivos da extensão, clique **Recarregar** na página de extensões.
-
-## Quando a página Embed não contém o nome
-
-Não há como deduzir com segurança o nome de um filme a partir de um identificador
-arbitrário do player. Abra primeiro a página do filme, clique na extensão e use
-**Guardar nome desta página**. Depois, na página com o iframe, abra a extensão e
-clique **Usar nome guardado**. Confira que nome e player correspondem antes de enviar.
-
-Somente um conjunto de nome/descrição é guardado por vez, em `storage.session`.
-Ele não é reaplicado silenciosamente a outro filme e pode ser apagado pelo botão.
-Se não houver título útil, o campo fica vazio para preenchimento manual.
-
-## Captura e limites
-
-- Nome: `og:title`, `twitter:title`, primeiro `h1` ou título da aba; remove o
-  sufixo RedeCanais e ignora títulos genéricos como Embed/Player.
-- Descrição: metadados Open Graph ou `description`, quando disponíveis.
-- Player: URL atual, iframes, links para `embed.api?embed=...` e códigos em
-  textarea/pre/code. Entende hostname percent-encoded, URL `//` e caminho Base64.
-- Vários players: escolha na lista. Não são abertos automaticamente.
-- Provedores: os suportados pelo backend. O domínio precisa estar cadastrado em
-  Admin → Provedores, incluindo aliases antigos. Não segue redirects para descobrir domínios.
-- Não captura capas automaticamente nesta versão; adicione a thumbnail na edição.
-- Não entra em iframes de outras origens, não contorna bloqueios e não executa
-  scripts copiados. Se a estrutura do site mudar, o extrator pode precisar de ajuste.
-- A extensão desktop não é instalada dentro do APK Android.
-
-## Autenticação e privacidade
-
-Permissões: `activeTab`, `scripting`, `storage`. Sem acesso permanente a todos os
-sites, cookies ou histórico. Captura somente após o clique. Não pede senha, não
-armazena token e não faz chamadas de escrita diretamente à API.
-
-A transferência usa um fragmento de URL (`#`), que não é enviado na requisição
-HTTP ao servidor. O fragmento pode ficar no histórico do navegador; não coloque
-segredos nos campos. O painel exibe os dados como texto e valida-os novamente na
-API. O login preserva o destino da importação. Salvar exige administrador, sessão,
-CSRF e origem válida, com as mesmas proteções do painel existente.
-
-`POST /api/admin/imports` recebe `title`, `description`, `categoryId`, `contentType`
-e `externalUrl`. Sempre grava `published=false`. Não busca URLs no servidor.
-
-O importador consulta registros externos existentes, comparando provedor e caminho
-com parâmetros ordenados, ignorando fragmento. Domínios antigos e atuais resolvem
-para o mesmo provedor. Duas importações simultâneas do mesmo provedor são serializadas
-por advisory lock transacional. Retorna o cadastro existente sem sobrescrevê-lo.
-Essa proteção é do importador; o CRUD manual continua com seu comportamento anterior.
-Não detecta que dois IDs/servidores diferentes representam a mesma obra.
-
-## Verificação
-
-```bash
-npm test --prefix backend
-npm run lint --prefix frontend
-npm run build --prefix frontend
-npm run test:browser --prefix backend
-```
-
-O teste de navegador usa Chromium (`npx playwright install chromium` na pasta backend).
-A extração é testada com HTML controlado semelhante ao código de incorporação fornecido;
-nenhum vídeo real de terceiros é acessado. Teste a extensão no seu Chrome após instalar,
-pois o site pode apresentar metadados diferentes dos exemplos.
-
-Referências: https://developer.chrome.com/docs/extensions/develop/concepts/activeTab
-https://developer.chrome.com/docs/extensions/reference/api/scripting
+A concessão de permissão e a instalação real da extensão precisam ser conferidas no Chrome/Edge do usuário. Os testes automatizados não representam uma instalação na barra do navegador, nem acessam os players reais de terceiros.
