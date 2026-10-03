@@ -1266,3 +1266,26 @@ progress {
 .provider-entry details { margin-top: 18px; color: var(--muted, #a7aba7); }
 .provider-history { padding-left: 20px; overflow-wrap: anywhere; }
 .provider-history small { display: block; margin: 5px 0 16px; }
+
+/* Native controls and links support touch, keyboard and TV navigation. */
+.series-browser, .series-manager { margin: 3rem 0; scroll-margin-top: 6rem; }
+.series-manager > .muted { margin: 1rem 0 1.5rem; }
+.season-toolbar { gap: 1.25rem; flex-wrap: wrap; margin: 1.5rem 0; }
+.season-toolbar label { display: grid; gap: .5rem; min-width: min(100%, 240px); }
+.season-toolbar select { max-width: 100%; }
+.episode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.episode-card { display: grid; grid-template-columns: minmax(100px, 36%) minmax(0, 1fr); gap: 1rem; padding: .8rem; border-radius: 12px; background: #ffffff04; align-items: start; transition: background .2s; }
+.episode-card:hover, .episode-card.is-current { background: #ffffff0d; }
+.episode-card:focus-visible { outline: 3px solid #c4ef65; outline-offset: 3px; }
+.episode-card h3 { font-size: 1rem; margin: .3rem 0; overflow-wrap: anywhere; }
+.episode-card .eyebrow { font-size: .65rem; }
+.episode-art { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: #171b21; }
+.episode-art img { width: 100%; height: 100%; object-fit: cover; }
+.episode-art > svg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0 1px 5px #000); }
+.episode-art progress { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; accent-color: #c4ef65; }
+.episode-description { color: #9ca3af; font-size: .85rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: .5rem; }
+.episode-watched { display: inline-flex; align-items: center; gap: .3rem; color: #c4ef65; font-size: .8rem; }
+.legacy-series { margin: 2rem 0; }
+.legacy-series summary { cursor: pointer; margin-bottom: 1rem; padding: .8rem; }
+@media (max-width: 900px) { .episode-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .season-toolbar { align-items: stretch; } .season-toolbar label { width: 100%; } .episode-card { padding: .5rem 0; gap: .75rem; } .series-manager .table-actions { flex-wrap: wrap; } }

@@ -4,7 +4,6 @@ import {
   NavLink,
   Route,
   Routes,
-  useNavigate,
   useParams,
 } from "react-router-dom";
 import {
@@ -17,7 +16,9 @@ import {
   Globe,
 } from "lucide-react";
 import useData from "../hooks/useData";
-import { api, upload } from "../services/api";
+import { api } from "../services/api";
+import VideoForm from "../components/admin/VideoForm";
+import SeriesManager, { NewEpisode } from "../components/admin/SeriesManager";
 import ImportVideo from "./ImportVideo";
 import Providers from "./Providers";
 import Feedback from "../components/Feedback";
@@ -193,6 +194,7 @@ function VideoList() {
                       <td>
                         <div className="table-actions">
                           <Link to={`/admin/videos/${v.id}`}>Editar</Link>
+                          {v.contentType === "series" && <Link to={`/admin/videos/${v.id}#temporadas`}>Temporadas e episódios</Link>}
                           {v.status === "ready" && (
                             <Link to={`/video/${v.id}`}>Assistir</Link>
                           )}
@@ -252,195 +254,6 @@ function VideoList() {
     </>
   );
 }
-function VideoForm({ video, categories, maxUploadMB }) {
-  const [sourceType, setSourceType] = useState(video?.sourceType || "upload");
-  const navigate = useNavigate(),
-    [busy, setBusy] = useState(false),
-    [progress, setProgress] = useState(0),
-    [error, setError] = useState("");
-  useEffect(() => {
-    if (!busy) return;
-    const warn = (e) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [busy]);
-  async function submit(e) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget),
-      thumbnail = f.get("thumbnail");
-    setBusy(true);
-    setError("");
-    setProgress(0);
-    try {
-      if (video) {
-        await api(`/videos/${video.id}`, {
-          method: "PUT",
-          body: {
-            ...(sourceType === "external" ? { externalUrl: f.get("externalUrl"), duration: Number(f.get("duration") || 0) } : {}),
-            contentType: f.get("contentType"),
-            title: f.get("title"),
-            description: f.get("description"),
-            categoryId: f.get("categoryId"),
-            published: f.has("published"),
-          },
-        });
-        if (thumbnail?.size) {
-          const fd = new FormData();
-          fd.append("thumbnail", thumbnail);
-          await upload(`/videos/${video.id}/thumbnail`, fd, setProgress);
-        }
-      } else {
-        const file = f.get("video");
-        if (file?.size > maxUploadMB * 1024 * 1024)
-          throw new Error(`O limite por vídeo é ${maxUploadMB} MB.`);
-        f.set("sourceType", sourceType);
-        f.set("published", String(f.has("published")));
-        if (!thumbnail?.size) f.delete("thumbnail");
-        await upload("/videos", f, setProgress);
-      }
-      navigate("/admin/videos");
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <>
-      <h1>{video ? "Editar vídeo" : "Um novo momento no acervo."}</h1>
-      {!categories.length ? (
-        <div className="empty-state">
-          <p>Crie uma categoria antes de enviar vídeos.</p>
-          <Link to="/admin/categories" className="button button-accent">
-            Criar categoria
-          </Link>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="form-stack upload-form">
-          <fieldset disabled={busy}>
-            <label>
-              Tipo de conteúdo
-              <select name="contentType" defaultValue={video?.contentType || "movie"} required>
-                <option value="movie">Filme</option>
-                <option value="series">Série</option>
-              </select>
-            </label>
-            <label>
-              Origem do vídeo
-              <select value={sourceType} disabled={!!video} onChange={(e) => setSourceType(e.target.value)}>
-                <option value="upload">Upload de arquivo</option>
-                <option value="external">Vídeo externo</option>
-              </select>
-            </label>
-            {sourceType === "external" && <>
-              <label>URL de incorporação
-                <input type="url" name="externalUrl" required maxLength={4096} defaultValue={video?.externalUrl || ""} placeholder="https://www.youtube.com/embed/ID_DO_VIDEO" />
-                <span className="form-hint">Cole somente a URL HTTPS do src do iframe. Gerencie os domínios em Admin → Provedores. Links de domínios anteriores cadastrados usam o endereço atual automaticamente.</span>
-              </label>
-              <label>Duração em segundos (opcional)
-                <input type="number" name="duration" min="0" max="43200" step="1" defaultValue={video?.duration || ""} />
-              </label>
-            </>}
-            <label>
-              Título
-              <input
-                name="title"
-                defaultValue={video?.title || ""}
-                required
-                maxLength={160}
-              />
-            </label>
-            <label>
-              Descrição
-              <textarea
-                name="description"
-                defaultValue={video?.description || ""}
-                maxLength={10000}
-                rows={5}
-              />
-            </label>
-            <label>
-              Categoria
-              <select
-                name="categoryId"
-                required
-                defaultValue={video?.categoryId || ""}
-              >
-                <option value="" disabled>
-                  Selecione uma categoria
-                </option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {!video && sourceType === "upload" && (
-              <label className="file-drop">
-                Arquivo de vídeo
-                <input
-                  type="file"
-                  name="video"
-                  accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,.mkv,.m4v"
-                  required
-                />
-                <span>Até {maxUploadMB} MB. MP4, MOV, MKV, WebM ou AVI.</span>
-              </label>
-            )}
-            {(!video || video.status === "ready") && (
-              <label>
-                Thumbnail opcional
-                <input
-                  type="file"
-                  name="thumbnail"
-                  accept="image/jpeg,image/png,image/webp"
-                />
-                <span className="form-hint">
-                  {sourceType === "external" ? "JPG, PNG ou WebP, até 10 MB. Sem imagem, usamos uma capa padrão." : "JPG, PNG ou WebP, até 10 MB. Sem imagem, geramos uma do vídeo."}
-                </span>
-              </label>
-            )}
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                name="published"
-                defaultChecked={video?.published ?? true}
-              />{" "}
-              {sourceType === "external" ? "Publicar agora" : "Publicar quando o vídeo estiver pronto"}
-            </label>
-          </fieldset>
-          {!video && sourceType === "upload" && (
-            <p className="form-hint">
-              Após o envio, o processamento continua no servidor. Acompanhe na
-              página de vídeos. HLS gera qualidades até 1080p, respeitando a
-              resolução original.
-            </p>
-          )}
-          {busy && (
-            <div role="status">
-              <progress value={progress} max="100" />
-              {progress < 100
-                ? ` Enviando: ${progress}%`
-                : " Upload enviado. Validando arquivo…"}
-            </div>
-          )}
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
-          )}
-          <button disabled={busy} className="button button-accent">
-            {busy ? "Aguarde…" : video ? "Salvar alterações" : sourceType === "external" ? "Cadastrar vídeo externo" : "Enviar vídeo"}
-          </button>
-        </form>
-      )}
-    </>
-  );
-}
 function UploadPage() {
   const state = useData(async (signal) => {
     const [categories, stats] = await Promise.all([
@@ -471,11 +284,10 @@ function EditPage() {
   );
   if (state.loading || state.error) return <Feedback {...state} />;
   return (
-    <VideoForm
-      key={id}
-      video={state.data.video}
-      categories={state.data.categories.items}
-    />
+    <>
+      <VideoForm key={id} video={state.data.video} categories={state.data.categories.items} />
+      {state.data.video.contentType === "series" && <SeriesManager key={`seasons-${id}`} series={state.data.video} />}
+    </>
   );
 }
 function Categories() {
@@ -679,6 +491,7 @@ export default function Admin() {
           <Route path="videos" element={<VideoList />} />
           <Route path="videos/:id" element={<EditPage />} />
           <Route path="upload" element={<UploadPage />} />
+          <Route path="series/:seriesId/seasons/:seasonId/new" element={<NewEpisode />} />
           <Route path="categories" element={<Categories />} />
           <Route path="users" element={<UserList />} />
           <Route path="import" element={<ImportVideo />} />

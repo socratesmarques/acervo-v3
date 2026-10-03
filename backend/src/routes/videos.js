@@ -29,16 +29,23 @@ const metadata = z
   })
   .strict();
 const creation = metadata.extend({
-  contentType: z.enum(["movie", "series"]).default("movie"),
-  sourceType: z.enum(["upload", "external"]).default("upload"),
+  contentType: z.enum(["movie", "series", "episode"]).default("movie"),
+  seasonId: uuid.optional(),
+  episodeNumber: z.number().int().min(1).max(10000).optional(),
+  sourceType: z.enum(["upload", "external", "collection"]).default("upload"),
   externalUrl: externalUrl.optional(),
   duration: z.number().finite().min(0).max(43200).default(0),
 }).superRefine((data, ctx) => {
+  if (data.sourceType === "collection" && data.contentType !== "series")
+    ctx.addIssue({ code: "custom", path: ["contentType"], message: "Uma coleção precisa ser uma série." });
+  if ((data.contentType === "episode") !== (data.seasonId !== undefined && data.episodeNumber !== undefined)
+      || (data.contentType !== "episode" && (data.seasonId !== undefined || data.episodeNumber !== undefined)))
+    ctx.addIssue({ code: "custom", path: ["seasonId"], message: "Episódios exigem temporada e número. Filmes e séries não aceitam esses campos." });
   if ((data.sourceType === "external") !== Boolean(data.externalUrl))
     ctx.addIssue({ code: "custom", path: ["externalUrl"], message: "Vídeo externo exige uma URL; upload não aceita URL externa." });
 });
 const editing = metadata.extend({
-  contentType: z.enum(["movie", "series"]).optional(),
+  contentType: z.enum(["movie", "series", "episode"]).optional(),
   externalUrl: externalUrl.optional(),
   duration: z.number().finite().min(0).max(43200).optional(),
 });
@@ -91,8 +98,8 @@ export default async function videoRoutes(app) {
           limits: {
             fileSize: config.MAX_UPLOAD_MB * 1024 * 1024,
             files: 2,
-            fields: 8,
-            parts: 10,
+            fields: 10,
+            parts: 12,
             fieldSize: 12000,
           },
         })) {
@@ -133,9 +140,26 @@ export default async function videoRoutes(app) {
           fail(400, "Valor de publicação inválido.");
         const data = creation.parse({
           ...fields,
+          episodeNumber: fields.episodeNumber === undefined ? undefined : Number(fields.episodeNumber),
           duration: fields.duration === undefined ? 0 : Number(fields.duration),
           published: fields.published === "true",
         });
+        if (data.sourceType === "collection") {
+          if (hasVideo) fail(400, "Cadastre os arquivos nos episódios, não na série.");
+          if (customThumbnail)
+            await putFile(config.STORAGE_DRIVER, `${id}/thumbnail.jpg`, path.join(directory, "thumbnail.jpg"));
+          try {
+            await query(
+              "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,source_type,content_type,status,published_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'collection','series','ready',CASE WHEN $6 THEN now() ELSE NULL END)",
+              [id, data.title, data.description, data.categoryId, req.user.id, data.published, config.STORAGE_DRIVER, customThumbnail],
+            );
+          } catch (error) {
+            if (customThumbnail) await query("INSERT INTO media_gc(id,storage_driver) VALUES($1,$2) ON CONFLICT DO NOTHING", [id, config.STORAGE_DRIVER]);
+            throw error;
+          }
+          await rm(directory, { recursive: true, force: true });
+          return reply.code(201).send({ id, status: "ready" });
+        }
         if (data.sourceType === "external") {
           if (hasVideo) fail(400, "Vídeo externo não aceita arquivo de vídeo.");
           const reference = await resolveExternal(data.externalUrl);
@@ -143,8 +167,8 @@ export default async function videoRoutes(app) {
             await putFile(config.STORAGE_DRIVER, `${id}/thumbnail.jpg`, path.join(directory, "thumbnail.jpg"));
           try {
             await query(
-              "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,source_type,provider_id,external_path,duration,status,published_at,content_type) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'external',$9,$10,$11,'ready',CASE WHEN $6 THEN now() ELSE NULL END,$12)",
-              [id, data.title, data.description, data.categoryId, req.user.id, data.published, config.STORAGE_DRIVER, customThumbnail, reference.providerId, reference.externalPath, data.duration, data.contentType],
+              "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,source_type,provider_id,external_path,duration,status,published_at,content_type,season_id,episode_number) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'external',$9,$10,$11,'ready',CASE WHEN $6 THEN now() ELSE NULL END,$12,$13,$14)",
+              [id, data.title, data.description, data.categoryId, req.user.id, data.published, config.STORAGE_DRIVER, customThumbnail, reference.providerId, reference.externalPath, data.duration, data.contentType, data.seasonId ?? null, data.episodeNumber ?? null],
             );
           } catch (error) {
             if (customThumbnail) await query("INSERT INTO media_gc(id,storage_driver) VALUES($1,$2) ON CONFLICT DO NOTHING", [id, config.STORAGE_DRIVER]);
@@ -160,7 +184,7 @@ export default async function videoRoutes(app) {
           fail(400, "Arquivo de vídeo inválido ou formato não suportado.");
         }
         await query(
-          "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,content_type) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+          "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,content_type,season_id,episode_number) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
           [
             id,
             data.title,
@@ -171,6 +195,8 @@ export default async function videoRoutes(app) {
             config.STORAGE_DRIVER,
             customThumbnail,
             data.contentType,
+            data.seasonId ?? null,
+            data.episodeNumber ?? null,
           ],
         );
         return reply

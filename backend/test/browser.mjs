@@ -116,7 +116,7 @@ if (process.env.CHROMIUM_MODULE) {
   const { default: custom } = await import(process.env.CHROMIUM_MODULE);
   launch = {
     ...launch,
-    args: custom.args,
+    args: custom.args.filter((arg) => arg !== "--disable-web-security"),
     executablePath: await custom.executablePath(),
   };
 }
@@ -225,7 +225,7 @@ try {
   // No third-party network dependency: verify iframe integration with a controlled response.
   await page.route("https://www.youtube.com/embed/**", route => route.fulfill({ contentType: "text/html; charset=utf-8", body: "<h1>Player externo de teste</h1>" }));
   await page.getByLabel("Origem do vídeo").selectOption("external");
-  await page.getByLabel("Tipo de conteúdo").selectOption("series");
+  await page.getByLabel("Tipo de conteúdo").selectOption("movie");
   assert.equal(await page.locator('input[name="video"]').count(), 0);
   await page.getByLabel("Título", { exact: true }).fill("Externo de teste");
   await page.getByLabel("URL de incorporação").fill("https://www.youtube.com/embed/test123");
@@ -236,7 +236,7 @@ try {
   await page.waitForURL("**/admin/videos");
   const row = page.getByRole("row").filter({ hasText: "Externo de teste" });
   await row.getByRole("link", { name: "Editar", exact: true }).click();
-  assert.equal(await page.getByLabel("Tipo de conteúdo").inputValue(), "series");
+  assert.equal(await page.getByLabel("Tipo de conteúdo").inputValue(), "movie");
   await page.getByLabel("URL de incorporação").fill("https://www.youtube.com/embed/edited123");
   await page.getByRole("button", { name: "Salvar alterações" }).click();
   await page.waitForURL("**/admin/videos");
@@ -261,6 +261,62 @@ try {
   await page.getByRole("button", { name: "Carregar vídeo externo" }).click();
   await page.frameLocator("iframe").frameLocator("iframe").getByText("Novo domínio funcionando").waitFor();
   assert.equal(await page.frameLocator("iframe").locator("iframe").getAttribute("src"), "https://player.example/embed/edited123");
+  // Real series/season/episode forms and navigation, with a controlled provider iframe.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(origin + "/admin/upload");
+  await page.getByLabel("Tipo de conteúdo").selectOption("series");
+  assert.equal(await page.locator('input[name="video"]').count(), 0);
+  assert.equal(await page.locator('input[name="externalUrl"]').count(), 0);
+  await page.getByLabel("Título", { exact: true }).fill("Horizontes");
+  await page.locator("select[name=categoryId]").selectOption({ label: "Viagens" });
+  await page.getByRole("button", { name: "Criar série e adicionar temporadas" }).click();
+  await page.getByRole("heading", { name: "Temporadas e episódios" }).waitFor();
+  const seriesAdminUrl = page.url();
+  const seriesId = new URL(seriesAdminUrl).pathname.split("/").at(-1);
+  await page.getByRole("button", { name: "Criar temporada", exact: true }).click();
+  await page.getByRole("link", { name: "Adicionar episódio", exact: true }).click();
+  await page.getByRole("heading", { name: "Novo episódio", exact: true }).waitFor();
+  await page.getByLabel("Título", { exact: true }).fill("A partida");
+  await page.getByLabel("URL de incorporação").fill("https://www.youtube.com/embed/series1");
+  await page.getByRole("button", { name: "Cadastrar vídeo externo", exact: true }).click();
+  await page.getByText("1. A partida", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Criar temporada", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Temporada salva." }).waitFor();
+  await page.getByRole("link", { name: "Adicionar episódio", exact: true }).click();
+  await page.getByRole("heading", { name: "Novo episódio", exact: true }).waitFor();
+  await page.getByLabel("Título", { exact: true }).fill("O retorno");
+  await page.getByLabel("URL de incorporação").fill("https://www.youtube.com/embed/series2");
+  await page.getByRole("button", { name: "Cadastrar vídeo externo", exact: true }).click();
+  await page.locator('.season-toolbar select').selectOption({ label: "Temporada 2" });
+  await page.getByText("1. O retorno", { exact: true }).waitFor();
+  await page.screenshot({ path: path.join(root, "backend/test-results/series-admin-desktop.png"), fullPage: true });
+  await page.getByLabel("Link ou ID do vídeo no ACERVO").fill(externalWatchUrl);
+  await page.getByRole("button", { name: "Vincular episódio", exact: true }).click();
+  await page.getByText("2. Externo de teste", { exact: true }).waitFor();
+  await page.goto(origin + `/video/${seriesId}`);
+  await page.getByRole("link", { name: /A partida/ }).waitFor();
+  assert.equal(await page.locator('iframe').count(), 0);
+  await page.screenshot({ path: path.join(root, "backend/test-results/series-desktop.png"), fullPage: true });
+  await page.getByRole("link", { name: /A partida/ }).click();
+  await page.getByRole("button", { name: "Carregar vídeo externo" }).click();
+  await page.frameLocator("iframe").frameLocator("iframe").getByText("Novo domínio funcionando").waitFor();
+  assert.equal(await page.frameLocator("iframe").locator("iframe").getAttribute("src"), "https://player.example/embed/series1");
+  await page.getByRole("link", { name: "Próximo episódio" }).click();
+  await page.getByRole("heading", { name: "O retorno", exact: true, level: 1 }).waitFor();
+  assert.equal(await page.locator('iframe').count(), 0);
+  assert.equal(await page.getByLabel("Selecionar temporada").inputValue(), (await db.query("SELECT id FROM seasons WHERE series_id=$1 AND number=2", [seriesId])).rows[0].id);
+  await page.getByRole("button", { name: "Carregar vídeo externo" }).click();
+  await page.frameLocator("iframe").frameLocator("iframe").getByText("Novo domínio funcionando").waitFor();
+  assert.equal(await page.frameLocator("iframe").locator("iframe").getAttribute("src"), "https://player.example/embed/series2");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(origin + `/video/${seriesId}`);
+  await page.getByLabel("Selecionar temporada").selectOption({ label: "Temporada 2" });
+  await page.getByRole("link", { name: /O retorno/ }).waitFor();
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: path.join(root, "backend/test-results/series-mobile.png"), fullPage: true });
+  await page.goto(seriesAdminUrl);
+  await page.getByRole("heading", { name: "Temporadas e episódios" }).waitFor();
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.goto(origin + "/perfil");
   await page.getByLabel("Senha atual").fill("Senha-de-teste-1234");
   await page
@@ -339,7 +395,7 @@ try {
   await popup.close();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: login, categoria, upload, HLS playback, favorito, histórico e retomada, busca, admin, vídeo externo e mudança de domínio no painel com CSP dinâmica e iframe simulado, layout 390px e alteração de senha. Sem erros de JavaScript.",
+    "PASS: login, categoria, upload, HLS playback, favorito, histórico e retomada, busca, admin, vídeo externo e mudança de domínio no painel com CSP dinâmica e iframe simulado, temporadas e episódios (criação, vínculo, seleção e próximo episódio), layout 390px e alteração de senha. Sem erros de JavaScript.",
   );
 } catch (error) {
   await page

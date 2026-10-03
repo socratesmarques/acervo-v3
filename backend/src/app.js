@@ -10,6 +10,7 @@ import { query } from "./db.js";
 import authRoutes from "./routes/auth.js";
 import importRoutes from "./routes/imports.js";
 import providerRoutes from "./routes/providers.js";
+import seriesRoutes from "./routes/series.js";
 import videoRoutes from "./routes/videos.js";
 import libraryRoutes from "./routes/library.js";
 export async function buildApp({ logger = true } = {}) {
@@ -58,6 +59,12 @@ export async function buildApp({ logger = true } = {}) {
             message: i.message,
           })),
         });
+    if (["seasons_series_number_key", "videos_season_episode_key"].includes(error.constraint))
+      return reply.code(409).send({ message: "Esse número de temporada ou episódio já está em uso." });
+    if (["seasons_parent_series", "series_has_seasons", "videos_episode_shape", "videos_provider_reference"].includes(error.constraint))
+      return reply.code(409).send({ message: "Vínculo inválido. Séries com temporadas e episódios devem manter seu tipo de conteúdo." });
+    if (["seasons_series_id_fkey", "videos_season_id_fkey"].includes(error.constraint))
+      return reply.code(409).send({ message: "Temporada/série inexistente ou ainda possui conteúdo. Mova ou exclua os episódios e temporadas antes de excluir." });
     if (error.code === "23505")
       return reply
         .code(409)
@@ -88,6 +95,7 @@ export async function buildApp({ logger = true } = {}) {
   });
   await app.register(authRoutes);
   await app.register(videoRoutes);
+  await app.register(seriesRoutes);
   await app.register(providerRoutes);
   await app.register(importRoutes);
   await app.register(libraryRoutes);

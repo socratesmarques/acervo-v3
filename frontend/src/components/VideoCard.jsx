@@ -20,7 +20,7 @@ export default function VideoCard({ video, showProgress = false }) {
         <span className="card-play">
           <Play size={23} fill="currentColor" aria-hidden="true" />
         </span>
-        <span className="duration">{video.sourceType === "external" && !video.duration ? "Externo" : formatDuration(video.duration)}</span>
+        <span className="duration">{video.contentType === "series" ? "Série" : video.sourceType === "external" && !video.duration ? "Externo" : formatDuration(video.duration)}</span>
         {showProgress && (
           <div
             className="progress-track"
@@ -37,7 +37,7 @@ export default function VideoCard({ video, showProgress = false }) {
       <div className="card-info">
         <h3>{video.title}</h3>
         <p>
-          {video.contentType === "series" ? "Série" : "Filme"} · {video.category}
+          {video.seriesId ? `${video.seriesTitle} · T${video.seasonNumber} E${video.episodeNumber}` : `${video.contentType === "series" ? "Série" : "Filme"} · ${video.category}`}
           {showProgress
             ? ` · ${video.progress}% assistido`
             : ` · ${new Date(video.publishedAt).getFullYear()}`}
