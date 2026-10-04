@@ -52,6 +52,30 @@ export default async function seriesRoutes(app) {
     if (!result.rowCount) fail(404, "Série não encontrada.");
     return dto(await accessibleVideo(id, req.user));
   });
+  app.delete("/api/series/:id", { preHandler: admin }, async (req) => {
+    const id = uuid.parse(req.params.id);
+    const removed = await transaction(async (db) => {
+      // Lock the parent first: the season trigger uses the same lock when adding seasons.
+      const { rows: [series] } = await db.query(
+        "SELECT id,storage_driver,status FROM videos WHERE id=$1 AND content_type='series' FOR UPDATE", [id]);
+      if (!series) fail(404, "Série não encontrada.");
+      const { rows: seasons } = await db.query(
+        "SELECT id FROM seasons WHERE series_id=$1 ORDER BY number FOR UPDATE", [id]);
+      const seasonIds = seasons.map((season) => season.id);
+      const { rows: episodes } = await db.query(
+        "SELECT id,status FROM videos WHERE season_id=ANY($1::uuid[]) ORDER BY id FOR UPDATE", [seasonIds]);
+      if (series.status === "processing" || episodes.some((episode) => episode.status === "processing"))
+        fail(409, "Aguarde o processamento dos episódios terminar antes de excluir a série.");
+      const ids = [id, ...episodes.map((episode) => episode.id)];
+      await db.query(
+        "INSERT INTO media_gc(id,storage_driver) SELECT id,storage_driver FROM videos WHERE id=ANY($1::uuid[]) ON CONFLICT DO NOTHING", [ids]);
+      await db.query("DELETE FROM videos WHERE season_id=ANY($1::uuid[])", [seasonIds]);
+      await db.query("DELETE FROM seasons WHERE series_id=$1", [id]);
+      await db.query("DELETE FROM videos WHERE id=$1", [id]);
+      return { seasons: seasons.length, episodes: episodes.length };
+    });
+    return { ok: true, seasonsDeleted: removed.seasons, episodesDeleted: removed.episodes };
+  });
   app.get("/api/series/:id/seasons", async (req) => {
     const id = uuid.parse(req.params.id);
     const series = await accessibleVideo(id, req.user);
