@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Enviar para ACERVO",
-  "version": "2.0.0",
-  "description": "Adiciona filmes e episódios ao ACERVO com destino lembrado e numeração automática.",
+  "version": "2.1.0",
+  "description": "Adiciona filmes e episódios ao ACERVO pelo menu de contexto e pelo envio rápido.",
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "contextMenus"
   ],
   "action": {
     "default_title": "Enviar para ACERVO",
