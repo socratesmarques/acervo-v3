@@ -20,7 +20,8 @@ Em requisições de alteração, envie Origin igual a APP_ORIGIN. Exceto no logi
 | GET | /search?q= | Busca por título, descrição e categoria |
 | POST | /videos | Upload, administrador |
 | PUT | /videos/:id | Editar metadados, administrador |
-| DELETE | /videos/:id | Excluir registro e agendar limpeza, administrador |
+| DELETE | /videos/:id | Excluir registro avulso e agendar limpeza, administrador |
+| DELETE | /series/:id | Excluir série, temporadas e episódios em uma transação; agenda a limpeza da mídia; administrador |
 | POST | /videos/:id/thumbnail | Substituir thumbnail, administrador |
 | POST | /videos/:id/retry | Reenfileirar vídeo com falha, administrador |
 | POST | /videos/:id/view | Contar visualização única por usuário/dia |
