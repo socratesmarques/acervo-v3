@@ -81,8 +81,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       if (target.protocol !== 'https:' || target.username || target.password)
         throw new Error('O link do episódio precisa usar HTTPS.');
       const permission = `https://${target.hostname}/*`;
-      if (!(await chrome.permissions.contains({ origins: [permission] })) &&
-          !(await chrome.permissions.request({ origins: [permission] })))
+      if (!(await chrome.permissions.request({ origins: [permission] })))
         throw new Error('Permita o acesso a este site para a extensão localizar o player.');
       const opened = await chrome.tabs.create({ url: target.href, active: false });
       temporaryTabId = opened.id;
