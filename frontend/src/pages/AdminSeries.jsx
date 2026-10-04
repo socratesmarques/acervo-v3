@@ -81,10 +81,10 @@ export default function SeriesList() {
   const [busy, setBusy] = useState(''), [error, setError] = useState('');
   const state = useData((signal) => api(`/admin/series?limit=20&offset=${page * 20}&q=${encodeURIComponent(q)}`, { signal }), [page, q]);
   async function action(series, remove) {
-    if (remove && !window.confirm(`Excluir a série “${series.title}”? Somente séries sem temporadas podem ser excluídas.`)) return;
+    if (remove && !window.confirm(`Excluir definitivamente “${series.title}”, ${series.seasonCount} temporada(s) e ${series.episodeCount} episódio(s)? Os históricos e favoritos desses itens também serão apagados.`)) return;
     setBusy(series.id); setError('');
     try {
-      if (remove) await api(`/videos/${series.id}`, { method: 'DELETE' });
+      if (remove) await api(`/series/${series.id}`, { method: 'DELETE' });
       else await api(`/series/${series.id}`, { method: 'PUT', body: { title: series.title, description: series.description, categoryId: series.categoryId, published: !series.published } });
       if (remove && page && state.data.items.length === 1) setPage(page - 1);
       else state.reload();
@@ -101,7 +101,7 @@ export default function SeriesList() {
         <Link to={`/admin/series/${series.id}`} className="admin-series-cover" aria-label={`Gerenciar ${series.title}`}><img src={series.thumbnail} alt="" loading="lazy" /><Tv size={22} aria-hidden="true" /></Link>
         <div className="admin-series-info"><h2><Link to={`/admin/series/${series.id}`}>{series.title}</Link></h2><p>{series.seasonCount} temporada(s) · {series.episodeCount} episódio(s)</p><p className="muted">{series.category} · {series.published ? 'Publicada' : 'Rascunho'}</p>
           <Link className="button button-accent" to={`/admin/series/${series.id}`}>Gerenciar temporadas</Link>
-          <div className="table-actions"><button disabled={busy === series.id} onClick={() => action(series, false)}>{series.published ? 'Despublicar' : 'Publicar'}</button><button className="danger-text" disabled={busy === series.id || series.seasonCount > 0 || series.status === 'processing'} title={series.seasonCount ? 'Remova as temporadas antes de excluir a série.' : 'Excluir série'} onClick={() => action(series, true)}>Excluir</button></div>
+          <div className="table-actions"><button disabled={busy === series.id} onClick={() => action(series, false)}>{series.published ? 'Despublicar' : 'Publicar'}</button><button className="danger-text" disabled={busy === series.id} title="Excluir série, temporadas e episódios" onClick={() => action(series, true)}>Excluir série inteira</button></div>
         </div>
       </article>)}</div>
       {!state.data.items.length && <div className="empty-state"><Tv size={36} /><h2>{q ? 'Nenhuma série encontrada.' : 'Crie sua primeira série.'}</h2><p>Ela começa com nome e categoria. Depois você adiciona os episódios.</p><Link className="button button-accent" to="/admin/series/new">Criar série</Link></div>}
