@@ -59,6 +59,21 @@ async function loadOptions(action = 'options') {
   updateButtons();
 }
 async function capture() {
+  const pending = (await chrome.storage.session.get('contextCapture')).contextCapture;
+  if (pending) {
+    await chrome.storage.session.remove('contextCapture');
+    fromContext = true;
+    captured = pending.capture || { urls: [], description: '', sourcePage: '' };
+    $('title').value = captured.title || '';
+    $('description').value = (captured.description || '').slice(0, 10000);
+    $('player').replaceChildren();
+    for (const url of captured.urls || []) $('player').add(new Option(url, url));
+    $('extras').open = true;
+    if (pending.error) status(pending.error, true);
+    else status('Episódio capturado pelo menu de contexto. Confira o nome e o player.');
+    updateButtons();
+    return;
+  }
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('Abra a página do filme ou episódio em uma aba normal.');
   const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
