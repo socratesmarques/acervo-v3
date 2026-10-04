@@ -16,7 +16,9 @@ function SeriesForm({ series, categories, onSaved }) {
     let id = series?.id || createdId;
     let metadataSaved = false;
     try {
-      const body = { title: form.get('title'), description: form.get('description'), categoryId: form.get('categoryId'), published: form.has('published') };
+      const body = { title: form.get('title'), description: form.get('description'), categoryId: form.get('categoryId'), published: form.has('published'),
+        releaseYear: form.get('releaseYear') ? Number(form.get('releaseYear')) : null,
+        episodeCoverDefault: form.has('episodeCoverDefault') };
       if (id) await api(`/series/${id}`, { method: 'PUT', body });
       else {
         const result = await api('/series', { method: 'POST', body: { ...body, firstSeason: form.has('firstSeason') } });
@@ -39,8 +41,10 @@ function SeriesForm({ series, categories, onSaved }) {
     <fieldset disabled={busy}>
       <label>Nome da série<input name="title" required maxLength={160} defaultValue={series?.title || ''} /></label>
       <label>Descrição<textarea name="description" rows={3} maxLength={10000} defaultValue={series?.description || ''} /></label>
+      <label>Ano de exibição (opcional)<input name="releaseYear" type="number" min="1888" max="2100" step="1" defaultValue={series?.releaseYear ?? ""} placeholder="Ex.: 2024" /></label>
       <label>Categoria<select name="categoryId" required defaultValue={series?.categoryId || ''}><option value="" disabled>Selecione uma categoria</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
       {(!series || series.status === 'ready') && <label>Capa da série (opcional)<input type="file" name="thumbnail" accept="image/jpeg,image/png,image/webp" /><span className="form-hint">JPG, PNG ou WebP, até 10 MB.</span></label>}
+      <label className="checkbox-label"><input type="checkbox" name="episodeCoverDefault" defaultChecked={series?.episodeCoverDefault ?? true} />Usar a capa da série como padrão nos episódios sem capa personalizada</label>
       {!series && !createdId && <label className="checkbox-label"><input type="checkbox" name="firstSeason" defaultChecked />Criar temporada 1 automaticamente</label>}
       <label className="checkbox-label"><input type="checkbox" name="published" defaultChecked={series?.published ?? true} />Publicar a série no catálogo</label>
     </fieldset>
@@ -68,7 +72,7 @@ export function EditSeries() {
     <Link className="back-link" to="/admin/series">Voltar às séries</Link>
     <div className="section-title"><div><p className="eyebrow">GERENCIAR SÉRIE</p><h1>{series.title}</h1><p className="muted">{series.category} · {series.published ? 'Publicada' : 'Rascunho'}</p></div><Link className="button button-glass" to={`/video/${id}`}>Ver no catálogo</Link></div>
     {notice && <p role="status">{notice}</p>}
-    <details className="series-metadata"><summary>Editar nome, descrição, categoria e capa</summary><SeriesForm series={series} categories={categories} onSaved={() => { setNotice('Dados da série atualizados.'); state.reload(); }} /></details>
+    <details className="series-metadata"><summary>Editar ano, nome, descrição e capa dos episódios</summary><SeriesForm series={series} categories={categories} onSaved={() => { setNotice('Dados da série atualizados.'); state.reload(); }} /></details>
     <SeriesManager key={id} series={series} />
   </>;
 }
