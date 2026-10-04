@@ -23,12 +23,13 @@ const execute = async (sql, values) => {
 pool.query = execute;
 pool.connect = async () => ({ query: execute, release() {}, on() {} });
 const dir = new URL("../migrations/", import.meta.url);
-for (const f of (await readdir(dir)).sort().filter((f) => f.endsWith('.sql') && !f.startsWith('005')))
+for (const f of (await readdir(dir)).sort().filter((f) => f.endsWith('.sql') && !f.startsWith('005') && !f.startsWith('006')))
   await db.exec(await readFile(new URL(f, dir), 'utf8'));
 const categoryId = randomUUID(), legacyId = randomUUID();
 await db.query("INSERT INTO categories(id,name) VALUES($1,'Séries de teste')", [categoryId]);
 await db.query("INSERT INTO videos(id,title,category_id,storage_driver,content_type,source_type,provider_id,external_path,status,published) VALUES($1,'Série antiga',$2,'local','series','external','youtube','/embed/old','ready',true)", [legacyId, categoryId]);
 await db.exec(await readFile(new URL('005_series_episodes.sql', dir), 'utf8'));
+await db.exec(await readFile(new URL('006_display_year_episode_cover.sql', dir), 'utf8'));
 const { createUser } = await import("../src/security.js");
 const { buildApp } = await import("../src/app.js");
 const { processOne } = await import("../src/worker.js");
@@ -98,6 +99,34 @@ test('séries: migration, organização, episódios e acesso', async (t) => {
     assert.equal((await request('GET', `/api/videos/${ep2}`, undefined, viewer)).statusCode, 404);
     const catalog = (await request('GET', '/api/videos', undefined, viewer)).json().items;
     assert(catalog.some((v) => v.id === series)); assert(!catalog.some((v) => v.id === ep1));
+  });
+  await t.test('ano de exibição e capa da série herdada pelos episódios', async () => {
+    const body = { title: 'Horizontes', categoryId, published: true, releaseYear: 1999, episodeCoverDefault: true };
+    let r = await request('PUT', `/api/series/${series}`, body);
+    assert.equal(r.statusCode, 200, r.body);
+    assert.equal(r.json().releaseYear, 1999);
+    assert.equal(r.json().episodeCoverDefault, true);
+    await db.query('UPDATE videos SET custom_thumbnail=true,updated_at=now() WHERE id=$1', [series]);
+    r = await request('GET', `/api/videos/${ep1}`, undefined, viewer);
+    assert.match(r.json().thumbnail, new RegExp(`/api/media/${series}/thumbnail.jpg`));
+    assert.equal((await request('PUT', `/api/series/${series}`, { ...body, releaseYear: null })).statusCode, 200);
+    assert.equal((await request('GET', `/api/videos/${series}`, undefined, viewer)).json().releaseYear, null);
+    assert.equal((await request('PUT', `/api/series/${series}`, { ...body, releaseYear: 1800 })).statusCode, 400);
+    r = await request('PUT', `/api/series/${series}`, { ...body, episodeCoverDefault: false });
+    assert.equal(r.statusCode, 200, r.body);
+    assert.equal((await request('GET', `/api/videos/${ep1}`, undefined, viewer)).json().thumbnail, '/placeholder-video.svg');
+    await db.query('UPDATE videos SET custom_thumbnail=true WHERE id=$1', [ep1]);
+    r = await request('GET', `/api/videos/${ep1}`, undefined, viewer);
+    assert.match(r.json().thumbnail, new RegExp(`/api/media/${ep1}/thumbnail.jpg`));
+    await db.query('UPDATE videos SET custom_thumbnail=false WHERE id=$1', [ep1]);
+    const movie = await create({ title: 'Filme com ano', sourceType: 'external', externalUrl: 'https://www.youtube.com/embed/year-test', releaseYear: '1985' });
+    assert.equal(movie.statusCode, 201, movie.body);
+    const movieId = movie.json().id;
+    assert.equal((await request('GET', `/api/videos/${movieId}`, undefined, viewer)).json().releaseYear, 1985);
+    const movieBody = { title: 'Filme com ano', categoryId, published: true, releaseYear: null };
+    assert.equal((await request('PUT', `/api/videos/${movieId}`, movieBody)).statusCode, 200);
+    assert.equal((await request('GET', `/api/videos/${movieId}`, undefined, viewer)).json().releaseYear, null);
+    await request('DELETE', `/api/videos/${movieId}`);
   });
   await t.test('upload HLS mantém histórico individual por episódio', async () => {
     const r = await create({ title: 'Viagem', contentType: 'episode', sourceType: 'upload', seasonId: s1, episodeNumber: 2 }, await readFile(new URL('./fixtures/flower.mp4', import.meta.url)));
