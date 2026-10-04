@@ -150,10 +150,19 @@ $('form').onsubmit = async (event) => {
   } catch (e) { status(e.message, true); }
   finally { busy = false; updateButtons(); }
 };
+function matchesSeason(entry, season) {
+  if (!season) return false;
+  if (entry.seasonLabel) {
+    const normalized = (value) => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      .replace(/^t\d+\s*[·:-]\s*/, '').replace(/^saga\s+/, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    return normalized(entry.seasonLabel) === normalized(season.title);
+  }
+  return entry.seasonNumber !== null && entry.seasonNumber !== undefined && entry.seasonNumber === Number(season.number);
+}
 function renderBatch() {
   if ($('batch').hidden) return;
   const season = options?.seasons.find((item) => item.id === $('season').value);
-  const entries = season ? seasonEntries.filter((entry) => entry.seasonNumber === Number(season.number)) : [];
+  const entries = season ? seasonEntries.filter((entry) => matchesSeason(entry, season)) : [];
   const list = $('batch-list'); list.replaceChildren();
   for (const entry of entries) {
     const index = seasonEntries.indexOf(entry);
@@ -163,9 +172,9 @@ function renderBatch() {
     list.append(row);
   }
   $('batch-send').disabled = busy || !entries.length;
-  const available = [...new Set(seasonEntries.map((entry) => entry.seasonNumber).filter(Boolean))];
+  const available = [...new Set(seasonEntries.map((entry) => entry.seasonLabel || entry.seasonNumber).filter(Boolean))];
   $('batch-progress').textContent = entries.length
-    ? entries.length + ' episódios dublados encontrados para a temporada ' + season.number + '.'
+    ? entries.length + ' episódios dublados encontrados para ' + (season.title || 'T' + season.number) + '.'
     : seasonEntries.length
       ? 'Nenhum episódio da temporada selecionada. Temporadas detectadas: ' + (available.join(', ') || 'não identificadas') + '.'
       : 'Nenhum link de episódio encontrado nesta página.';
@@ -181,7 +190,7 @@ function showBatch(entries) {
 $('batch-send').onclick = async () => {
   const selected = [...$('batch-list').querySelectorAll('input:checked')].map((input) => seasonEntries[Number(input.value)]);
   const destination = options?.seasons.find((item) => item.id === $('season').value);
-  if (!ready || !destination || !selected.length || selected.some((entry) => entry.seasonNumber !== Number(destination.number))) return status('Confira a temporada e selecione seus episódios.', true);
+  if (!ready || !destination || !selected.length || selected.some((entry) => !matchesSeason(entry, destination))) return status('Confira a temporada e selecione seus episódios.', true);
   const hosts = [...new Set(selected.map((entry) => 'https://' + new URL(entry.url).hostname + '/*'))];
   if (!(await chrome.permissions.request({ origins: hosts }))) return status('Permita o acesso ao site dos episódios.', true);
   busy = true; updateButtons(); $('batch-send').disabled = true;
