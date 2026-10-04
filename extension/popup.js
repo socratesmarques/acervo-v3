@@ -176,6 +176,7 @@ function showBatch(entries) {
   $('send').hidden = true;
   $('review').hidden = true;
   renderBatch();
+  status(seasonEntries.length ? `${seasonEntries.length} links dublados capturados. Escolha a temporada abaixo.` : 'Nenhum link dublado foi encontrado nesta página. Confira se a lista está aberta.', !seasonEntries.length);
 }
 $('batch-send').onclick = async () => {
   const selected = [...$('batch-list').querySelectorAll('input:checked')].map((input) => seasonEntries[Number(input.value)]);
@@ -213,6 +214,7 @@ async function initialize() {
   if (origin) {
     try {
       origin = acervoOrigin(origin); await loadOptions();
+      if (!$('batch').hidden) { renderBatch(); status($('batch-progress').textContent, !seasonEntries.length); return; }
       const job = (await chrome.storage.session.get('quickImportJob')).quickImportJob;
       if (job?.origin === origin && job.status === 'done') showResult(job.data, true);
       else if (job?.origin === origin && job.status === 'error') status(`Último envio sem confirmação: ${job.message}`, true);
