@@ -1,11 +1,11 @@
-# Enviar para ACERVO 2.1 — envio rápido
+# Enviar para ACERVO 2.2 — envio rápido
 
 Captura o nome e o player da página aberta, permite escolher o destino uma vez e salva diretamente no ACERVO. Depois da configuração, o fluxo normal tem **dois cliques**: abrir a extensão e clicar em Salvar/Publicar. Abrir a página de origem e preencher um título ausente continuam sendo passos necessários quando o site não oferece esses dados.
 
 ## Atualizar a extensão já instalada
 
 1. Atualize os arquivos da extensão na pasta já carregada no Chrome/Edge. Se usa Git, execute `git pull`; se usa ZIP, substitua os arquivos da pasta `extension`.
-2. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.1.0**.
+2. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.2.0**.
 3. Para instalar pela primeira vez, use **Carregar sem compactação** e selecione a pasta `extension` que contém `manifest.json`. Fixe o ícone na barra do navegador.
 
 Não é necessário remover a extensão. Manter a mesma pasta/instalação preserva o endereço salvo.
@@ -26,6 +26,12 @@ Na página de uma lista de episódios, clique com o botão direito no link do ep
 Na primeira utilização em cada site de origem, o Chrome/Edge pede permissão para a extensão ler aquela página e encontrar o iframe. A página de origem é fechada depois da captura. O título, player, série e temporada aparecem no formulário para você conferir; série e temporada usam o destino salvo anteriormente.
 
 O mesmo item também aparece ao clicar com o botão direito numa página de episódio já aberta. Se o site bloquear a leitura ou não mostrar o player imediatamente, abra a página do episódio e tente pelo menu novamente, ou use o ícone da extensão.
+
+## Importar uma temporada inteira
+
+Abra a página que lista os episódios e clique com o botão direito em uma área vazia → **Importar temporada para o ACERVO**. A janela mostra os links detectados, ordenados por número; os marcados como dublados vêm selecionados. Escolha a série e a temporada, confira a lista e clique em **Importar selecionados**. A extensão abre cada página em segundo plano, captura o player e envia com o número do episódio mostrado. O resultado informa salvos, duplicados e falhas. Corrija os itens com falha e repita apenas esses; os players já cadastrados não são duplicados.
+
+A detecção depende de links visíveis com número de episódio no texto ou na linha da lista. Links gerados apenas após rolagem precisam estar carregados antes do clique. Páginas bloqueadas ou players carregados com atraso podem exigir importação individual.
 
 ## Adicionar episódios com poucos cliques
 
