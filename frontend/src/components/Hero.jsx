@@ -20,7 +20,7 @@ export default function Hero({ video }) {
         </h1>
         <div className="hero-meta">
           <strong>{video.category}</strong>
-          <span>{new Date(video.publishedAt).getFullYear()}</span>
+          <span>{video.releaseYear ?? new Date(video.publishedAt).getFullYear()}</span>
           <span>{video.contentType === "series" ? "Série" : video.sourceType === "external" && !video.duration ? "Vídeo externo" : formatDuration(video.duration)}</span>
         </div>
         <p className="hero-description">{video.description}</p>
