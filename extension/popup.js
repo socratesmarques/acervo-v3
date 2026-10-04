@@ -1,6 +1,6 @@
 import { acervoOrigin, hostPattern, preferenceKey } from './shared.js';
 const $ = (id) => document.getElementById(id);
-let captured = { urls: [], description: '', sourcePage: '' }, saved, origin = '', options, preferences = {}, ready = false, busy = false;
+let captured = { urls: [], description: '', sourcePage: '' }, saved, origin = '', options, preferences = {}, ready = false, busy = false, fromContext = false;
 function status(text, error = false) { $('status').textContent = text; $('status').dataset.error = String(error); }
 function fillSelect(id, items, label, selected, placeholder) {
   const select = $(id); select.replaceChildren(new Option(placeholder, ''));
@@ -49,7 +49,7 @@ async function loadOptions(action = 'options') {
   options = data;
   const key = preferenceKey(origin, options.userId);
   preferences = (await chrome.storage.local.get(key))[key] || {};
-  $('mode').value = preferences.mode === 'episode' ? 'episode' : 'movie';
+  $('mode').value = fromContext ? 'episode' : preferences.mode === 'episode' ? 'episode' : 'movie';
   $('published').checked = preferences.published === true;
   fillSelect('category', options.categories, (c) => c.name, preferences.categoryId, options.categories.length ? 'Selecione uma categoria' : 'Crie uma categoria no painel');
   fillSelect('series', options.series, (s) => s.title, preferences.seriesId, options.series.length ? 'Selecione uma série' : 'Crie uma série no painel');
