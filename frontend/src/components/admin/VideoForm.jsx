@@ -35,6 +35,7 @@ export default function VideoForm({ video, categories, maxUploadMB, episodeConte
             contentType: f.get("contentType"),
             title: f.get("title"),
             description: f.get("description"),
+            releaseYear: f.get("releaseYear") ? Number(f.get("releaseYear")) : null,
             categoryId: f.get("categoryId"),
             published: f.has("published"),
           },
@@ -117,6 +118,10 @@ export default function VideoForm({ video, categories, maxUploadMB, episodeConte
                 rows={5}
               />
             </label>
+            <label>Ano de exibição (opcional)
+              <input name="releaseYear" type="number" min="1888" max="2100" step="1"
+                defaultValue={video?.releaseYear ?? episodeContext?.series.releaseYear ?? ""} placeholder="Ex.: 2024" />
+            </label>
             <label>
               Categoria
               <select
@@ -155,7 +160,7 @@ export default function VideoForm({ video, categories, maxUploadMB, episodeConte
                   accept="image/jpeg,image/png,image/webp"
                 />
                 <span className="form-hint">
-                  {sourceType !== "upload" ? "JPG, PNG ou WebP, até 10 MB. Sem imagem, usamos uma capa padrão." : "JPG, PNG ou WebP, até 10 MB. Sem imagem, geramos uma do vídeo."}
+                  {contentType === "episode" ? "JPG, PNG ou WebP, até 10 MB. Sem capa própria, a série pode fornecer a capa padrão." : sourceType !== "upload" ? "JPG, PNG ou WebP, até 10 MB. Sem imagem, usamos uma capa padrão." : "JPG, PNG ou WebP, até 10 MB. Sem imagem, geramos uma do vídeo."}
                 </span>
               </label>
             )}
