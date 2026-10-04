@@ -10,7 +10,7 @@ A extensão **Enviar para ACERVO 2.1** captura nome/player e salva filmes ou epi
 
 ## Atualizar uma instalação existente
 
-Leia [ATUALIZAR-TEMPORADAS.md](ATUALIZAR-TEMPORADAS.md) para instalar a estrutura de temporadas e episódios e organizar o acervo existente. Preserve seu `.env` e os volumes existentes.
+Leia [ATUALIZAR-TEMPORADAS.md](ATUALIZAR-TEMPORADAS.md) para instalar a estrutura de temporadas e episódios e organizar o acervo existente. Preserve seu `.env` e os volumes existentes. Após `git pull`, execute `docker compose up -d --build` para aplicar a migration do ano de exibição e da capa padrão; não use `down -v`.
 
 ## Iniciar com Docker
 
@@ -58,9 +58,9 @@ docker compose down
 
 | Área | Implementação |
 | --- | --- |
-| Catálogo | Home, recentes, mais assistidos, categorias, busca e paginação |
+| Catálogo | Home, recentes, mais assistidos, categorias, busca, paginação e ano de exibição editável no painel |
 | Administração | Dashboard, upload, edição, exclusão, publicação, despublicação e thumbnail |
-| Séries | Aba própria no admin, cadastro sem vídeo/link, temporada 1 automática, episódios por link/upload, vínculo de vídeos existentes e próximo episódio |
+| Séries | Aba própria no admin, cadastro sem vídeo/link, temporada 1 automática, episódios por link/upload, vínculo de vídeos existentes, próximo episódio e capa da série como padrão opcional nos episódios |
 | Categorias | Criar, editar e excluir; proteção de categorias ainda usadas |
 | Contas | Login, logout, perfil, troca de senha e criação de admin/espectador |
 | Favoritos | Adicionar/remover e listar por usuário |
