@@ -3,6 +3,8 @@ import { playbackUrl } from "./external.js";
 import { fail } from "./security.js";
 export const selectVideo = `SELECT v.*,c.name AS category,p.base_url AS provider_origin,p.kind AS provider_kind,p.name AS provider_name,
  s.series_id,s.number AS season_number,series.title AS series_title,
+ series.custom_thumbnail AS series_custom_thumbnail,series.episode_cover_default AS series_episode_cover_default,
+ series.updated_at AS series_updated_at,series.status AS series_status,
  COALESCE(h.position,0) AS position,COALESCE(h.completed,false) AS completed,
  (f.video_id IS NOT NULL) AS favorite FROM videos v
  JOIN categories c ON c.id=v.category_id
@@ -28,6 +30,8 @@ export function dto(v) {
     playerUrl: v.source_type === "external" ? `/api/players/${v.id}` : null,
     title: v.title,
     description: v.description,
+    releaseYear: v.release_year,
+    episodeCoverDefault: !!v.episode_cover_default,
     categoryId: v.category_id,
     category: v.category,
     duration: v.duration,
@@ -38,9 +42,13 @@ export function dto(v) {
     createdAt: v.created_at,
     views: Number(v.views),
     thumbnail:
-      v.status === "ready" && (v.source_type === "upload" || v.custom_thumbnail)
+      v.status === "ready" && v.custom_thumbnail
         ? `/api/media/${v.id}/thumbnail.jpg?v=${new Date(v.updated_at).getTime()}`
-        : "/placeholder-video.svg",
+        : v.content_type === "episode" && v.series_episode_cover_default && v.series_custom_thumbnail && v.series_status === "ready"
+          ? `/api/media/${v.series_id}/thumbnail.jpg?v=${new Date(v.series_updated_at).getTime()}`
+          : v.status === "ready" && v.source_type === "upload"
+            ? `/api/media/${v.id}/thumbnail.jpg?v=${new Date(v.updated_at).getTime()}`
+            : "/placeholder-video.svg",
     source: v.status === "ready" && v.source_type === "upload" ? `/api/media/${v.id}/master.m3u8` : null,
     mp4Url: v.status === "ready" && v.source_type === "upload" ? `/api/media/${v.id}/playback.mp4` : null,
     qualities: v.qualities,
