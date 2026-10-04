@@ -60,7 +60,7 @@ docker compose down
 | --- | --- |
 | Catálogo | Home, recentes, mais assistidos, categorias, busca, paginação e ano de exibição editável no painel |
 | Administração | Dashboard, upload, edição, exclusão, publicação, despublicação e thumbnail |
-| Séries | Aba própria no admin, cadastro sem vídeo/link, temporada 1 automática, episódios por link/upload, vínculo de vídeos existentes, próximo episódio e capa da série como padrão opcional nos episódios |
+| Séries | Aba própria no admin, cadastro sem vídeo/link, temporada 1 automática, episódios por link/upload, vínculo de vídeos existentes, próximo episódio e capa da série como padrão opcional nos episódios e exclusão da série inteira com temporadas e episódios |
 | Categorias | Criar, editar e excluir; proteção de categorias ainda usadas |
 | Contas | Login, logout, perfil, troca de senha e criação de admin/espectador |
 | Favoritos | Adicionar/remover e listar por usuário |
@@ -99,7 +99,7 @@ PostgreSQL guarda referências e metadados, não bytes de vídeo. Tabelas: users
 
 O upload salva o original temporariamente e cria uma tarefa queued. Um worker separado usa lock do PostgreSQL, processa o arquivo e só marca ready após salvar todas as saídas. No reinício, recupera tarefas processing. Falhas podem ser reprocessadas no admin.
 
-Original, MP4, HLS e thumbnail são preservados. Planeje espaço para múltiplas cópias e temporários. A exclusão remove o registro imediatamente e coloca a mídia numa fila de limpeza; o worker precisa estar ativo. Não há lixeira: recuperação só por backup.
+Original, MP4, HLS e thumbnail são preservados. Planeje espaço para múltiplas cópias e temporários. A exclusão remove o registro imediatamente e coloca a mídia numa fila de limpeza; o worker precisa estar ativo. Na aba Séries, **Excluir série inteira** remove em uma transação os episódios, temporadas e a série após confirmação dos totais; episódios em processamento impedem a operação. Não há lixeira: recuperação só por backup.
 
 ## Segurança
 
