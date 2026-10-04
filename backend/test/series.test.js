@@ -232,18 +232,26 @@ test('séries: migration, organização, episódios e acesso', async (t) => {
     assert.equal(seasons.length, 0);
     await request('DELETE', `/api/videos/${empty.json().id}`);
   });
-  await t.test('exclusão exige remover episódios e temporadas explicitamente', async () => {
+  await t.test('exclui série inteira com temporadas, episódios, histórico e limpeza de mídia', async () => {
     assert.equal((await request('DELETE', `/api/videos/${series}`)).statusCode, 409);
     assert.equal((await request('DELETE', `/api/seasons/${s1}`)).statusCode, 409);
-    assert.equal((await request('PUT', `/api/videos/${series}`, { title: 'Horizontes', categoryId, published: true, contentType: 'movie' })).statusCode, 409);
-    const temp = (await request('POST', `/api/series/${legacyId}/seasons`, { number: 1 })).json();
-    assert.equal((await request('PUT', `/api/videos/${legacyId}`, { title: 'Antiga', categoryId, contentType: 'movie' })).statusCode, 409);
-    await request('DELETE', `/api/seasons/${temp.id}`);
-    for (const id of [ep1, ep2, uploaded]) assert.equal((await request('DELETE', `/api/videos/${id}`)).statusCode, 200);
-    for (const id of [s1, s2]) assert.equal((await request('DELETE', `/api/seasons/${id}`)).statusCode, 200);
-    assert.equal((await request('DELETE', `/api/videos/${series}`)).statusCode, 200);
+    assert.equal((await request('DELETE', `/api/series/${series}`, undefined, viewer)).statusCode, 403);
+    assert.equal((await request('DELETE', `/api/series/${series}`, undefined, null)).statusCode, 401);
+    assert.equal((await request('DELETE', `/api/series/${series}`, undefined, admin, { 'x-csrf-token': 'wrong' })).statusCode, 403);
+    await db.query("UPDATE videos SET status='processing' WHERE id=$1", [ep1]);
+    assert.equal((await request('DELETE', `/api/series/${series}`)).statusCode, 409);
+    assert.equal((await request('GET', `/api/videos/${series}`)).statusCode, 200);
+    await db.query("UPDATE videos SET status='ready' WHERE id=$1", [ep1]);
+    const result = await request('DELETE', `/api/series/${series}`);
+    assert.equal(result.statusCode, 200, result.body);
+    assert.equal(result.json().seasonsDeleted, 2);
+    assert.equal(result.json().episodesDeleted, 3);
+    for (const id of [series, ep1, ep2, uploaded])
+      assert.equal((await request('GET', `/api/videos/${id}`)).statusCode, 404);
+    assert.equal((await request('DELETE', `/api/series/${series}`)).statusCode, 404);
     assert.equal((await request('GET', '/api/history', undefined, viewer)).json().total, 0);
     assert.equal((await request('GET', '/api/favorites', undefined, viewer)).json().total, 0);
-    assert.equal((await db.query('SELECT count(*)::int AS n FROM media_gc WHERE id=$1', [uploaded])).rows[0].n, 1);
+    for (const id of [series, ep1, ep2, uploaded])
+      assert.equal((await db.query('SELECT count(*)::int AS n FROM media_gc WHERE id=$1', [id])).rows[0].n, 1);
   });
 });
