@@ -191,7 +191,11 @@ async function initialize() {
   const settings = await chrome.storage.local.get('acervoOrigin'); origin = settings.acervoOrigin || ''; $('origin').value = origin;
   saved = (await chrome.storage.session.get('filmMetadata')).filmMetadata;
   $('restore').hidden = !saved; $('forget').hidden = !saved; $('connection').open = !origin;
-  if (new URLSearchParams(location.search).has('season')) {\n    const pending = (await chrome.storage.session.get('seasonCapture')).seasonCapture;\n    await chrome.storage.session.remove('seasonCapture');\n    fromContext = true; showBatch(pending?.entries || []);\n  } else await capture();
+  if (new URLSearchParams(location.search).has('season')) {
+    const pending = (await chrome.storage.session.get('seasonCapture')).seasonCapture;
+    await chrome.storage.session.remove('seasonCapture');
+    fromContext = true; showBatch(pending?.entries || []);
+  } else await capture();
   if (origin) {
     try {
       origin = acervoOrigin(origin); await loadOptions();
