@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Enviar para ACERVO",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Adiciona filmes e episódios ao ACERVO pelo menu de contexto e pelo envio rápido.",
   "permissions": [
     "activeTab",
