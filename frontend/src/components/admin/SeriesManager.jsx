@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../services/api";
 import useData from "../../hooks/useData";
 import Feedback from "../Feedback";
@@ -21,6 +21,7 @@ export function NewEpisode() {
 }
 
 export default function SeriesManager({ series }) {
+  const navigate = useNavigate();
   const state = useData((signal) => api(`/series/${series.id}/seasons`, { signal }), [series.id]);
   const [selected, setSelected] = useState("");
   const [editing, setEditing] = useState(null);
@@ -63,6 +64,17 @@ export default function SeriesManager({ series }) {
       setSelected(f.get("seasonId")); setLinking(null); form.reset();
     }, "Episódio vinculado. O link, a publicação e o histórico foram preservados.");
   }
+  async function removeSeries() {
+    if (state.loading || state.error) return;
+    const episodeCount = seasons.reduce((total, item) => total + item.episodes.length, 0);
+    if (!window.confirm(`Excluir definitivamente “${series.title}”, ${seasons.length} temporada(s) e ${episodeCount} episódio(s)? Os históricos e favoritos desses itens também serão apagados.`)) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await api(`/series/${series.id}`, { method: "DELETE" });
+      navigate("/admin/series");
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
   function removeSeason() {
     if (!window.confirm(`Excluir a temporada ${season.number}? Somente temporadas vazias podem ser excluídas.`)) return;
     run(async () => { await api(`/seasons/${season.id}`, { method: "DELETE" }); setSelected(""); setEditing(null); }, "Temporada excluída.");
@@ -79,6 +91,7 @@ export default function SeriesManager({ series }) {
   return <section id="temporadas" className="series-manager">
     <h2>Temporadas e episódios</h2>
     <button type="button" className="button button-glass" disabled={busy || state.loading} onClick={state.reload}>Atualizar episódios</button>
+    <button type="button" className="danger-text" disabled={busy || state.loading || !!state.error} onClick={removeSeries}>Excluir série inteira</button>
     <p className="muted">Crie uma temporada e adicione os episódios na ordem desejada. A série e seus episódios precisam estar publicados para aparecer aos espectadores.</p>
     <form className="inline-form" onSubmit={saveSeason} key={editing?.id || `new-${seasons.length}`}>
       <label>{editing ? "Número da temporada" : "Nova temporada"}
