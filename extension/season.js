@@ -1,30 +1,34 @@
-// Lê apenas links da página atual, depois que o usuário escolhe importar a temporada.
+// Lê o texto e os links visíveis na ordem do documento após a ação do usuário.
 (() => {
   const clean = (value) => (value || '').replace(/\s+/g, ' ').trim();
   const found = new Map();
   let seasonNumber = null;
-  const nodes = [...document.querySelectorAll('h1,h2,h3,h4,h5,a[href]')].slice(0, 2500);
-  for (const node of nodes) {
-    if (node.tagName !== 'A') {
-      const match = clean(node.textContent).match(/^(\d{1,3})\s*[ªºa]?\s*temporada\b/i);
-      if (match) seasonNumber = Number(match[1]);
+  let recentText = '';
+  let sinceEpisode = 100;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(), visited = 0; node && visited < 12000; node = walker.nextNode(), visited++) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.parentElement?.closest('script,style,noscript,template,[hidden]')) continue;
+      const part = clean(node.nodeValue);
+      if (!part) continue;
+      const season = (recentText + ' ' + part).match(/(?:^|\s)(\d{1,3})\s*[ªºa]?\s*temporada$/i);
+      if (season) { seasonNumber = Number(season[1]); recentText = ''; sinceEpisode = 100; continue; }
+      recentText = (recentText + ' ' + part).slice(-700);
+      sinceEpisode++;
+      if (/epis[oó]dio\s*0*\d{1,3}\b/i.test(recentText.slice(-240))) sinceEpisode = 0;
       continue;
     }
+    if (node.tagName !== 'A' || !node.hasAttribute('href')) continue;
     const label = clean(node.innerText || node.textContent);
-    // Se há dois links na mesma linha, use somente a opção dublada.
-    if (!/dublad[oa]/i.test(label) || /legendad[oa]/i.test(label)) continue;
-    let row = '';
-    for (let parent = node.parentElement, depth = 0; parent && depth < 4; parent = parent.parentElement, depth++) {
-      const text = clean(parent.textContent);
-      if (text.length <= 300 && /epis[oó]dio\s*0*\d{1,3}\b/i.test(text)) { row = text; break; }
-    }
-    const match = row.match(/epis[oó]dio\s*0*(\d{1,3})\b/i);
+    if (!/dublad[oa]/i.test(label) || /legendad[oa]/i.test(label) || sinceEpisode > 8) continue;
+    const matches = [...recentText.matchAll(/epis[oó]dio\s*0*(\d{1,3})\b/gi)];
+    const match = matches.at(-1);
     if (!match) continue;
     let url;
     try { url = new URL(node.getAttribute('href'), location.href); } catch { continue; }
-    if (url.protocol !== 'https:' || url.username || url.password || url.origin !== location.origin || url.href.length > 2048 || url.href === location.href) continue;
+    if (url.protocol !== 'https:' || url.username || url.password || url.href.length > 2048 || url.href === location.href) continue;
     const number = Number(match[1]);
-    const title = clean(row.replace(/\s*[-–—]?\s*dublad[oa].*$/i, '')).slice(0, 160);
+    const title = clean(recentText.slice(match.index).replace(/\s*[-–—]?\s*dublad[oa].*$/i, '').replace(/[-–—]\s*$/, '')).slice(0, 160);
     const key = (seasonNumber ?? '?') + ':' + number;
     if (!found.has(key)) found.set(key, { url: url.href, number, seasonNumber, title: title || 'Episódio ' + number, dubbed: true });
     if (found.size >= 100) break;
