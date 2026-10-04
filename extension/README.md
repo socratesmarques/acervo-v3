@@ -1,4 +1,4 @@
-# Enviar para ACERVO 2.0 — envio rápido
+# Enviar para ACERVO 2.1 — envio rápido
 
 Captura o nome e o player da página aberta, permite escolher o destino uma vez e salva diretamente no ACERVO. Depois da configuração, o fluxo normal tem **dois cliques**: abrir a extensão e clicar em Salvar/Publicar. Abrir a página de origem e preencher um título ausente continuam sendo passos necessários quando o site não oferece esses dados.
 
@@ -6,7 +6,7 @@ Captura o nome e o player da página aberta, permite escolher o destino uma vez 
 
 1. Atualize o servidor com o backend desta versão (instruções abaixo).
 2. Atualize os arquivos na mesma pasta `extension` já carregada no Chrome/Edge. Se usa Git, `git pull` atualiza essa pasta junto do projeto. Se usa ZIP, substitua o conteúdo da pasta existente, incluindo os novos arquivos `background.js`, `bridge.js` e `shared.js`.
-3. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.0.0**.
+3. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.1.0**.
 4. Para instalar pela primeira vez, use **Carregar sem compactação** e selecione a pasta `extension` que contém `manifest.json`. Fixe o ícone na barra do navegador.
 
 Não é necessário remover a extensão. Manter a mesma pasta/instalação preserva o endereço salvo.
@@ -19,6 +19,14 @@ Não é necessário remover a extensão. Manter a mesma pasta/instalação prese
 4. A extensão usa uma aba desse endereço. Se não houver uma, Conectar abre uma aba em segundo plano. Se pedir login, use **Abrir ACERVO / entrar**, autentique-se e volte à página do episódio para conectar novamente.
 
 Mantenha uma aba do ACERVO aberta. A sessão deve ser do administrador; a extensão não pede nem salva a senha. Se a sessão expirar, ela informa o erro e não mostra uma confirmação falsa.
+
+## Usar o menu do botão direito
+
+Na página de uma lista de episódios, clique com o botão direito no link do episódio e escolha **Adicionar episódio ao ACERVO**. A extensão abre a página em segundo plano, captura o nome e o player e abre o cadastro já no modo de episódio. Se ainda não tiver conectado o ACERVO, conecte uma vez e depois repita o envio.
+
+Na primeira utilização em cada site de origem, o Chrome/Edge pede permissão para a extensão ler aquela página e encontrar o iframe. A página de origem é fechada depois da captura. O título, player, série e temporada aparecem no formulário para você conferir; série e temporada usam o destino salvo anteriormente.
+
+O mesmo item também aparece ao clicar com o botão direito numa página de episódio já aberta. Se o site bloquear a leitura ou não mostrar o player imediatamente, abra a página do episódio e tente pelo menu novamente, ou use o ícone da extensão.
 
 ## Adicionar episódios com poucos cliques
 
@@ -60,9 +68,9 @@ O envio é coordenado pelo service worker da extensão e o último resultado fic
 
 ## Permissões e segurança
 
-- `activeTab` e `scripting`: captura na aba atual após ação do usuário.
+- `activeTab`, `scripting` e `contextMenus`: captura sob ação explícita do usuário pelo ícone ou menu do botão direito.
 - `storage`: endereço, destinos e preferências; dados capturados/último resultado usam armazenamento de sessão.
-- Permissão de host **opcional**, concedida em Conectar somente ao endereço configurado do ACERVO. O manifesto aceita endereços HTTPS porque o domínio é escolhido pelo usuário; não concede acesso automático a todos eles.
+- Permissão de host **opcional** para o endereço do ACERVO e, separadamente, para a página de episódio usada pelo menu de contexto. A permissão da página de origem é pedida na primeira utilização do site. O manifesto aceita endereços HTTPS porque o domínio é escolhido pelo usuário; não concede acesso automático a todos eles.
 - As requisições são feitas na origem exata do ACERVO em contexto isolado, com os cookies HttpOnly já existentes. O CSRF é obtido e usado dentro dessa aba, sem ser salvo na extensão.
 - A API mantém autenticação, administração, checagem de origem, CSRF, validação e limite de requisições. Não foi aberto CORS nem criado token permanente.
 - Chrome não separa portas na permissão de host; o código confere a origem completa, incluindo porta, antes de executar as chamadas.
