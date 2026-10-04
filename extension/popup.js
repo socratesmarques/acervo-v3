@@ -26,6 +26,7 @@ function updateSeasonNote() {
   $('next').textContent = season ? `Em branco: próximo disponível (agora: ${season.nextEpisodeNumber}).` : 'Em branco: próximo número disponível.';
   $('series-note').textContent = series && !series.published ? 'Esta série está em rascunho. Publique-a no painel para liberar os episódios.' : '';
   updateButtons();
+  renderBatch();
 }
 function updateSeasons(selected = '') {
   const seasons = (options?.seasons || []).filter((s) => s.seriesId === $('series').value);
@@ -149,24 +150,37 @@ $('form').onsubmit = async (event) => {
   } catch (e) { status(e.message, true); }
   finally { busy = false; updateButtons(); }
 };
+function renderBatch() {
+  if ($('batch').hidden) return;
+  const season = options?.seasons.find((item) => item.id === $('season').value);
+  const entries = season ? seasonEntries.filter((entry) => entry.seasonNumber === Number(season.number)) : [];
+  const list = $('batch-list'); list.replaceChildren();
+  for (const entry of entries) {
+    const index = seasonEntries.indexOf(entry);
+    const row = document.createElement('label'); row.className = 'check';
+    const check = document.createElement('input'); check.type = 'checkbox'; check.checked = true; check.value = String(index);
+    row.append(check, document.createTextNode(' E' + String(entry.number).padStart(2, '0') + ' · ' + entry.title));
+    list.append(row);
+  }
+  $('batch-send').disabled = busy || !entries.length;
+  const available = [...new Set(seasonEntries.map((entry) => entry.seasonNumber).filter(Boolean))];
+  $('batch-progress').textContent = entries.length
+    ? entries.length + ' episódios dublados encontrados para a temporada ' + season.number + '.'
+    : seasonEntries.length
+      ? 'Nenhum episódio da temporada selecionada. Temporadas detectadas: ' + (available.join(', ') || 'não identificadas') + '.'
+      : 'Nenhum link de episódio encontrado nesta página.';
+}
 function showBatch(entries) {
   seasonEntries = entries.filter((entry) => entry?.url && Number.isInteger(entry.number));
   $('batch').hidden = false;
-  $('form').querySelector('#send').hidden = true;
+  $('send').hidden = true;
   $('review').hidden = true;
-  const list = $('batch-list'); list.replaceChildren();
-  for (const [index, entry] of seasonEntries.entries()) {
-    const row = document.createElement('label'); row.className = 'check';
-    const check = document.createElement('input'); check.type = 'checkbox'; check.checked = entry.dubbed; check.value = String(index);
-    row.append(check, document.createTextNode(' E' + String(entry.number).padStart(2, '0') + ' · ' + entry.title + (entry.dubbed ? ' · Dublado' : '')));
-    list.append(row);
-  }
-  if (!seasonEntries.length) status('Nenhum link de episódio foi encontrado. Abra a lista da temporada com os links visíveis.', true);
-  else status(seasonEntries.length + ' links encontrados. Selecione os dublados e confira o destino.');
+  renderBatch();
 }
 $('batch-send').onclick = async () => {
   const selected = [...$('batch-list').querySelectorAll('input:checked')].map((input) => seasonEntries[Number(input.value)]);
-  if (!ready || !$('season').value || !selected.length) return status('Selecione série, temporada e pelo menos um episódio.', true);
+  const destination = options?.seasons.find((item) => item.id === $('season').value);
+  if (!ready || !destination || !selected.length || selected.some((entry) => entry.seasonNumber !== Number(destination.number))) return status('Confira a temporada e selecione seus episódios.', true);
   const hosts = [...new Set(selected.map((entry) => 'https://' + new URL(entry.url).hostname + '/*'))];
   if (!(await chrome.permissions.request({ origins: hosts }))) return status('Permita o acesso ao site dos episódios.', true);
   busy = true; updateButtons(); $('batch-send').disabled = true;
@@ -178,7 +192,7 @@ $('batch-send').onclick = async () => {
     try {
       const page = await message('captureEpisode', { url: entry.url });
       if (!page?.urls?.length) throw new Error('Player não encontrado');
-      const result = await message('save', { title: (page.title || entry.title).slice(0, 160), description: (page.description || '').slice(0, 10000),
+      const result = await message('save', { title: entry.title.slice(0, 160), description: (page.description || '').slice(0, 10000),
         externalUrl: page.urls[0], contentType: 'episode', seasonId, episodeNumber: entry.number, published });
       result.duplicate ? duplicateCount++ : savedCount++;
     } catch (error) { failures.push('E' + entry.number + ': ' + error.message); }
