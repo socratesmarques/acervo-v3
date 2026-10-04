@@ -47,15 +47,15 @@ Retorno: {items,total,limit,offset}. /history e /favorites aceitam limit/offset.
 
 ## Upload
 
-POST /videos recebe os campos title, description, categoryId e published (texto true ou false), arquivo video e arquivo opcional thumbnail. Resposta 202: {id,status:"queued",message}.
+POST /videos recebe os campos title, description, categoryId, published e releaseYear opcional (1888–2100) (texto true ou false), arquivo video e arquivo opcional thumbnail. Resposta 202: {id,status:"queued",message}.
 
 Formatos de entrada: MP4, MOV, M4V, MKV, AVI e WebM. ffprobe valida o conteúdo; extensão sozinha não basta. Thumbnail até 10 MB/20 megapixels, recodificada em JPEG. O vídeo tem limite configurado por MAX_UPLOAD_MB, padrão 10240 MB.
 
-PUT /videos/:id recebe JSON completo: {title,description,categoryId,published}. Publicar durante o processamento significa disponibilizar automaticamente quando ready, nunca servir arquivos incompletos.
+PUT /videos/:id recebe JSON completo: {title,description,categoryId,published,releaseYear?}. O valor null limpa o ano. POST/PUT /series aceita releaseYear e episodeCoverDefault (booleano); quando ativo, episódios sem capa personalizada exibem a capa atual da série. Publicar durante o processamento significa disponibilizar automaticamente quando ready, nunca servir arquivos incompletos.
 
 ## Vídeo retornado
 
-id, title, description, categoryId, category, duration (segundos), published, status, processingError, publishedAt, createdAt, views, thumbnail, source (master HLS), mp4Url, qualities, position, completed e progress (0–100), favorite.
+id, title, description, releaseYear, episodeCoverDefault, categoryId, category, duration (segundos), published, status, processingError, publishedAt, createdAt, views, thumbnail, source (master HLS), mp4Url, qualities, position, completed e progress (0–100), favorite.
 
 Vídeos ainda não processados retornam source/thumbnail nulos. Nunca retornamos caminhos absolutos do servidor ou credenciais do storage.
 
