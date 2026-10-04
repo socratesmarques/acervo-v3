@@ -81,7 +81,7 @@ export async function listVideos(user, filter, adminMode = false) {
     : [visibleVideo];
   if (!filter.kind) conditions.push("v.season_id IS NULL");
   if (filter.contentType === "series")
-    conditions.push("v.content_type IN ('series','episode')");
+    conditions.push(adminMode ? "v.content_type='series'" : "v.content_type IN ('series','episode')");
   else if (filter.contentType)
     conditions.push(`v.content_type=${bind(filter.contentType)}`);
   if (filter.category)
