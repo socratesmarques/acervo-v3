@@ -43,7 +43,69 @@ export async function handleMessage(message) {
   } finally { if (message.action === 'save') saving = false; }
 }
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('popup.html')) return false;
+  if (sender.id !== chrome.runtime.id || sender.url?.split('?')[0] !== chrome.runtime.getURL('popup.html')) return false;
   handleMessage(message).then(sendResponse).catch((error) => sendResponse({ ok: false, message: error.message }));
   return true; // Keep the response channel alive if the popup closes during a save.
+});
+
+
+const contextMenuId = 'acervo-add-episode';
+function installContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: contextMenuId,
+      title: 'Adicionar episódio ao ACERVO',
+      contexts: ['link', 'page']
+    });
+  });
+}
+chrome.runtime.onInstalled.addListener(installContextMenu);
+
+async function openContextForm(capture, error = '') {
+  await chrome.storage.session.set({ contextCapture: { capture, error, openedAt: Date.now() } });
+  await chrome.windows.create({
+    url: chrome.runtime.getURL('popup.html?context=1'),
+    type: 'popup',
+    width: 430,
+    height: 760,
+    focused: true
+  });
+}
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId !== contextMenuId) return;
+  let temporaryTabId;
+  try {
+    let result;
+    if (info.linkUrl) {
+      const target = new URL(info.linkUrl);
+      if (target.protocol !== 'https:' || target.username || target.password)
+        throw new Error('O link do episódio precisa usar HTTPS.');
+      const permission = `https://${target.hostname}/*`;
+      if (!(await chrome.permissions.contains({ origins: [permission] })) &&
+          !(await chrome.permissions.request({ origins: [permission] })))
+        throw new Error('Permita o acesso a este site para a extensão localizar o player.');
+      const opened = await chrome.tabs.create({ url: target.href, active: false });
+      temporaryTabId = opened.id;
+      await waitForTab(temporaryTabId);
+      const [injected] = await chrome.scripting.executeScript({
+        target: { tabId: temporaryTabId },
+        files: ['extract.js']
+      });
+      result = injected?.result;
+    } else {
+      if (!tab?.id) throw new Error('Não encontrei a aba atual.');
+      const [injected] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['extract.js']
+      });
+      result = injected?.result;
+    }
+    if (!result?.urls?.length)
+      throw new Error('Não encontrei um player nesta página. Abra a página do episódio e tente novamente.');
+    await openContextForm(result);
+  } catch (error) {
+    await openContextForm({ version: 1, title: '', description: '', urls: [], sourcePage: info.linkUrl || tab?.url || '' }, error.message);
+  } finally {
+    if (temporaryTabId) await chrome.tabs.remove(temporaryTabId).catch(() => {});
+  }
 });
