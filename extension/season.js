@@ -3,16 +3,18 @@
   const clean = (value) => (value || '').replace(/\s+/g, ' ').trim();
   const found = new Map();
   let seasonNumber = null;
+  let seasonLabel = null;
   let recentText = '';
   let sinceEpisode = 100;
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(), visited = 0; node && visited < 12000; node = walker.nextNode(), visited++) {
+  for (let node = walker.nextNode(), visited = 0; node && visited < 40000; node = walker.nextNode(), visited++) {
     if (node.nodeType === Node.TEXT_NODE) {
       if (node.parentElement?.closest('script,style,noscript,template,[hidden]')) continue;
       const part = clean(node.nodeValue);
       if (!part) continue;
       const season = (recentText + ' ' + part).match(/(?:^|\s)(\d{1,3})\s*[ªºa]?\s*temporada$/i);
-      if (season) { seasonNumber = Number(season[1]); recentText = ''; sinceEpisode = 100; continue; }
+      if (season) { seasonNumber = Number(season[1]); seasonLabel = null; recentText = ''; sinceEpisode = 100; continue; }
+      if (/^saga\s+.{2,100}$/i.test(part)) { seasonNumber = null; seasonLabel = part; recentText = ''; sinceEpisode = 100; continue; }
       recentText = (recentText + ' ' + part).slice(-700);
       sinceEpisode++;
       if (/epis[oó]dio\s*0*\d{1,3}\b/i.test(recentText.slice(-240))) sinceEpisode = 0;
@@ -29,9 +31,9 @@
     if (url.protocol !== 'https:' || url.username || url.password || url.href.length > 2048 || url.href === location.href) continue;
     const number = Number(match[1]);
     const title = clean(recentText.slice(match.index).replace(/\s*[-–—]?\s*dublad[oa].*$/i, '').replace(/[-–—]\s*$/, '')).slice(0, 160);
-    const key = (seasonNumber ?? '?') + ':' + number;
-    if (!found.has(key)) found.set(key, { url: url.href, number, seasonNumber, title: title || 'Episódio ' + number, dubbed: true });
-    if (found.size >= 100) break;
+    const key = (seasonLabel || seasonNumber || '?') + ':' + number;
+    if (!found.has(key)) found.set(key, { url: url.href, number, seasonNumber, seasonLabel, title: title || 'Episódio ' + number, dubbed: true });
+    if (found.size >= 1500) break;
   }
-  return [...found.values()].sort((a, b) => (a.seasonNumber ?? 0) - (b.seasonNumber ?? 0) || a.number - b.number);
+  return [...found.values()];
 })();
