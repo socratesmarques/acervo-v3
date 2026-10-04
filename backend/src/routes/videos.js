@@ -26,6 +26,7 @@ const metadata = z
     description: z.string().max(10000).default(""),
     categoryId: uuid,
     published: z.boolean().default(false),
+    releaseYear: z.number().int().min(1888).max(2100).nullable().optional(),
   })
   .strict();
 const creation = metadata.extend({
@@ -98,8 +99,8 @@ export default async function videoRoutes(app) {
           limits: {
             fileSize: config.MAX_UPLOAD_MB * 1024 * 1024,
             files: 2,
-            fields: 10,
-            parts: 12,
+            fields: 14,
+            parts: 16,
             fieldSize: 12000,
           },
         })) {
@@ -143,6 +144,7 @@ export default async function videoRoutes(app) {
           episodeNumber: fields.episodeNumber === undefined ? undefined : Number(fields.episodeNumber),
           duration: fields.duration === undefined ? 0 : Number(fields.duration),
           published: fields.published === "true",
+          releaseYear: fields.releaseYear === undefined || fields.releaseYear === "" ? null : Number(fields.releaseYear),
         });
         if (data.sourceType === "collection") {
           if (hasVideo) fail(400, "Cadastre os arquivos nos episódios, não na série.");
@@ -150,8 +152,8 @@ export default async function videoRoutes(app) {
             await putFile(config.STORAGE_DRIVER, `${id}/thumbnail.jpg`, path.join(directory, "thumbnail.jpg"));
           try {
             await query(
-              "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,source_type,content_type,status,published_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'collection','series','ready',CASE WHEN $6 THEN now() ELSE NULL END)",
-              [id, data.title, data.description, data.categoryId, req.user.id, data.published, config.STORAGE_DRIVER, customThumbnail],
+              "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,source_type,content_type,status,published_at,release_year) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'collection','series','ready',CASE WHEN $6 THEN now() ELSE NULL END,$9)",
+              [id, data.title, data.description, data.categoryId, req.user.id, data.published, config.STORAGE_DRIVER, customThumbnail, data.releaseYear ?? null],
             );
           } catch (error) {
             if (customThumbnail) await query("INSERT INTO media_gc(id,storage_driver) VALUES($1,$2) ON CONFLICT DO NOTHING", [id, config.STORAGE_DRIVER]);
@@ -167,8 +169,8 @@ export default async function videoRoutes(app) {
             await putFile(config.STORAGE_DRIVER, `${id}/thumbnail.jpg`, path.join(directory, "thumbnail.jpg"));
           try {
             await query(
-              "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,source_type,provider_id,external_path,duration,status,published_at,content_type,season_id,episode_number) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'external',$9,$10,$11,'ready',CASE WHEN $6 THEN now() ELSE NULL END,$12,$13,$14)",
-              [id, data.title, data.description, data.categoryId, req.user.id, data.published, config.STORAGE_DRIVER, customThumbnail, reference.providerId, reference.externalPath, data.duration, data.contentType, data.seasonId ?? null, data.episodeNumber ?? null],
+              "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,source_type,provider_id,external_path,duration,status,published_at,content_type,season_id,episode_number,release_year) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'external',$9,$10,$11,'ready',CASE WHEN $6 THEN now() ELSE NULL END,$12,$13,$14,$15)",
+              [id, data.title, data.description, data.categoryId, req.user.id, data.published, config.STORAGE_DRIVER, customThumbnail, reference.providerId, reference.externalPath, data.duration, data.contentType, data.seasonId ?? null, data.episodeNumber ?? null, data.releaseYear ?? null],
             );
           } catch (error) {
             if (customThumbnail) await query("INSERT INTO media_gc(id,storage_driver) VALUES($1,$2) ON CONFLICT DO NOTHING", [id, config.STORAGE_DRIVER]);
@@ -184,7 +186,7 @@ export default async function videoRoutes(app) {
           fail(400, "Arquivo de vídeo inválido ou formato não suportado.");
         }
         await query(
-          "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,content_type,season_id,episode_number) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+          "INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,custom_thumbnail,content_type,season_id,episode_number,release_year) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
           [
             id,
             data.title,
@@ -197,6 +199,7 @@ export default async function videoRoutes(app) {
             data.contentType,
             data.seasonId ?? null,
             data.episodeNumber ?? null,
+            data.releaseYear ?? null,
           ],
         );
         return reply
@@ -220,8 +223,8 @@ export default async function videoRoutes(app) {
       fail(400, "URL e duração manual são exclusivas de vídeos externos.");
     const reference = data.externalUrl === undefined ? null : await resolveExternal(data.externalUrl);
     const result = await query(
-      "UPDATE videos SET title=$2,description=$3,category_id=$4,published=$5,provider_id=COALESCE($6,provider_id),external_path=COALESCE($7,external_path),duration=COALESCE($8,duration),content_type=COALESCE($9,content_type),published_at=CASE WHEN $5 AND status='ready' THEN COALESCE(published_at,now()) ELSE published_at END,updated_at=now() WHERE id=$1 RETURNING id",
-      [id, data.title, data.description, data.categoryId, data.published, reference?.providerId ?? null, reference?.externalPath ?? null, data.duration ?? null, data.contentType ?? null],
+      "UPDATE videos SET title=$2,description=$3,category_id=$4,published=$5,provider_id=COALESCE($6,provider_id),external_path=COALESCE($7,external_path),duration=COALESCE($8,duration),content_type=COALESCE($9,content_type),release_year=CASE WHEN $11::boolean THEN $10 ELSE release_year END,published_at=CASE WHEN $5 AND status='ready' THEN COALESCE(published_at,now()) ELSE published_at END,updated_at=now() WHERE id=$1 RETURNING id",
+      [id, data.title, data.description, data.categoryId, data.published, reference?.providerId ?? null, reference?.externalPath ?? null, data.duration ?? null, data.contentType ?? null, data.releaseYear ?? null, data.releaseYear !== undefined],
     );
     if (!result.rowCount) fail(404, "Vídeo não encontrado.");
     return dto(await accessibleVideo(id, req.user));
