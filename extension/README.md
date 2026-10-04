@@ -4,10 +4,9 @@ Captura o nome e o player da página aberta, permite escolher o destino uma vez 
 
 ## Atualizar a extensão já instalada
 
-1. Atualize o servidor com o backend desta versão (instruções abaixo).
-2. Atualize os arquivos na mesma pasta `extension` já carregada no Chrome/Edge. Se usa Git, `git pull` atualiza essa pasta junto do projeto. Se usa ZIP, substitua o conteúdo da pasta existente, incluindo os novos arquivos `background.js`, `bridge.js` e `shared.js`.
-3. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.1.0**.
-4. Para instalar pela primeira vez, use **Carregar sem compactação** e selecione a pasta `extension` que contém `manifest.json`. Fixe o ícone na barra do navegador.
+1. Atualize os arquivos da extensão na pasta já carregada no Chrome/Edge. Se usa Git, execute `git pull`; se usa ZIP, substitua os arquivos da pasta `extension`.
+2. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.1.0**.
+3. Para instalar pela primeira vez, use **Carregar sem compactação** e selecione a pasta `extension` que contém `manifest.json`. Fixe o ícone na barra do navegador.
 
 Não é necessário remover a extensão. Manter a mesma pasta/instalação preserva o endereço salvo.
 
@@ -75,19 +74,9 @@ O envio é coordenado pelo service worker da extensão e o último resultado fic
 - A API mantém autenticação, administração, checagem de origem, CSRF, validação e limite de requisições. Não foi aberto CORS nem criado token permanente.
 - Chrome não separa portas na permissão de host; o código confere a origem completa, incluindo porta, antes de executar as chamadas.
 
-## Atualizar os containers no Windows
+## Atualizar a extensão no Windows
 
-Depois de incorporar a alteração no GitHub, na pasta original do projeto:
-
-```powershell
-cd C:\Users\Usuario\Documents\acervo-novo
-git switch main
-git pull --ff-only
-docker compose build api
-docker compose up -d
-```
-
-Execute um comando por vez e pare em caso de erro. Esta atualização não acrescenta migration: requer a versão com temporadas/episódios (migration 005) já instalada. Não apague volumes. Atualizar apenas a pasta da extensão não instala as novas rotas no servidor. Não precisa gerar outro APK para atualizar a extensão.
+Para esta melhoria, não é necessário reiniciar o Docker nem gerar outro APK. Depois de atualizar os arquivos do projeto com Git ou ZIP, abra `chrome://extensions` ou `edge://extensions` e clique em **Recarregar** no cartão **Enviar para ACERVO**.
 
 ## Testes
 
