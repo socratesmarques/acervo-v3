@@ -40,7 +40,7 @@ export default function VideoCard({ video, showProgress = false }) {
           {video.seriesId ? `${video.seriesTitle} · T${video.seasonNumber} E${video.episodeNumber}` : `${video.contentType === "series" ? "Série" : "Filme"} · ${video.category}`}
           {showProgress
             ? ` · ${video.progress}% assistido`
-            : ` · ${new Date(video.publishedAt).getFullYear()}`}
+            : ` · ${video.releaseYear ?? new Date(video.publishedAt).getFullYear()}`}
         </p>
       </div>
     </Link>
