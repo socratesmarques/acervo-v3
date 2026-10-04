@@ -46,6 +46,7 @@ export default function Video() {
         </div>
       </div>
       <dl>
+        {video.releaseYear && <div><dt>Ano de exibição</dt><dd>{video.releaseYear}</dd></div>}
         <div><dt>Publicado em</dt><dd>{formatDate(video.publishedAt)}</dd></div>
         <div><dt>{isSeries ? "Episódios disponíveis" : "Duração"}</dt><dd>{isSeries ? episodes.length : video.duration ? formatDuration(video.duration) : "Não informada"}</dd></div>
         {!isSeries && <div><dt>Visualizações</dt><dd>{video.views}</dd></div>}
