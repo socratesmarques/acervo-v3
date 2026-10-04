@@ -24,7 +24,19 @@ async function siteTab(origin, create) {
 }
 export async function handleMessage(message) {
   const origin = acervoOrigin(message.origin);
-  if (!['connect', 'options', 'save'].includes(message.action)) throw new Error('Operação inválida.');
+  if (!['connect', 'options', 'save', 'captureEpisode'].includes(message.action)) throw new Error('Operação inválida.');
+  if (message.action === 'captureEpisode') {
+    const target = new URL(message.body.url);
+    if (target.protocol !== 'https:' || target.username || target.password) throw new Error('Link inválido.');
+    const allowed = await chrome.permissions.contains({ origins: [`https://${target.hostname}/*`] });
+    if (!allowed) throw new Error('Autorize o site de origem antes de importar.');
+    const tab = await chrome.tabs.create({ url: target.href, active: false });
+    try {
+      await waitForTab(tab.id);
+      const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
+      return { ok: true, data: result?.result };
+    } finally { await chrome.tabs.remove(tab.id).catch(() => {}); }
+  }
   const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
   if (configured !== origin) throw new Error('O endereço mudou. Clique em Conectar.');
   if (message.action === 'save' && saving) throw new Error('Um envio já está em andamento. Aguarde o resultado.');
@@ -50,6 +62,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 
 const contextMenuId = 'acervo-add-episode';
+const seasonMenuId = 'acervo-import-season';
 function installContextMenu() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
@@ -57,6 +70,7 @@ function installContextMenu() {
       title: 'Adicionar episódio ao ACERVO',
       contexts: ['link', 'page']
     });
+    chrome.contextMenus.create({ id: seasonMenuId, title: 'Importar temporada para o ACERVO', contexts: ['page'] });
   });
 }
 chrome.runtime.onInstalled.addListener(installContextMenu);
@@ -72,6 +86,14 @@ async function openContextForm(capture, error = '') {
   });
 }
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === seasonMenuId) {
+    try {
+      const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['season.js'] });
+      await chrome.storage.session.set({ seasonCapture: { entries: result?.result || [], sourcePage: tab.url } });
+      await chrome.windows.create({ url: chrome.runtime.getURL('popup.html?season=1'), type: 'popup', width: 480, height: 760, focused: true });
+    } catch (error) { await openContextForm({ urls: [], sourcePage: tab?.url || '' }, error.message); }
+    return;
+  }
   if (info.menuItemId !== contextMenuId) return;
   let temporaryTabId;
   try {
