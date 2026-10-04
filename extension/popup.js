@@ -1,6 +1,6 @@
 import { acervoOrigin, hostPattern, preferenceKey } from './shared.js';
 const $ = (id) => document.getElementById(id);
-let captured = { urls: [], description: '', sourcePage: '' }, saved, origin = '', options, preferences = {}, ready = false, busy = false, fromContext = false;
+let captured = { urls: [], description: '', sourcePage: '' }, saved, origin = '', options, preferences = {}, ready = false, busy = false, fromContext = false, seasonEntries = [];
 function status(text, error = false) { $('status').textContent = text; $('status').dataset.error = String(error); }
 function fillSelect(id, items, label, selected, placeholder) {
   const select = $(id); select.replaceChildren(new Option(placeholder, ''));
@@ -149,11 +149,49 @@ $('form').onsubmit = async (event) => {
   } catch (e) { status(e.message, true); }
   finally { busy = false; updateButtons(); }
 };
+function showBatch(entries) {
+  seasonEntries = entries.filter((entry) => entry?.url && Number.isInteger(entry.number));
+  $('batch').hidden = false;
+  $('form').querySelector('#send').hidden = true;
+  $('review').hidden = true;
+  const list = $('batch-list'); list.replaceChildren();
+  for (const [index, entry] of seasonEntries.entries()) {
+    const row = document.createElement('label'); row.className = 'check';
+    const check = document.createElement('input'); check.type = 'checkbox'; check.checked = entry.dubbed; check.value = String(index);
+    row.append(check, document.createTextNode(' E' + String(entry.number).padStart(2, '0') + ' · ' + entry.title + (entry.dubbed ? ' · Dublado' : '')));
+    list.append(row);
+  }
+  if (!seasonEntries.length) status('Nenhum link de episódio foi encontrado. Abra a lista da temporada com os links visíveis.', true);
+  else status(seasonEntries.length + ' links encontrados. Selecione os dublados e confira o destino.');
+}
+$('batch-send').onclick = async () => {
+  const selected = [...$('batch-list').querySelectorAll('input:checked')].map((input) => seasonEntries[Number(input.value)]);
+  if (!ready || !$('season').value || !selected.length) return status('Selecione série, temporada e pelo menos um episódio.', true);
+  const hosts = [...new Set(selected.map((entry) => 'https://' + new URL(entry.url).hostname + '/*'))];
+  if (!(await chrome.permissions.request({ origins: hosts }))) return status('Permita o acesso ao site dos episódios.', true);
+  busy = true; updateButtons(); $('batch-send').disabled = true;
+  const seasonId = $('season').value, published = $('published').checked;
+  await rememberDestination();
+  let savedCount = 0, duplicateCount = 0, failures = [];
+  for (const [index, entry] of selected.entries()) {
+    $('batch-progress').textContent = (index + 1) + '/' + selected.length + ': ' + entry.title;
+    try {
+      const page = await message('captureEpisode', { url: entry.url });
+      if (!page?.urls?.length) throw new Error('Player não encontrado');
+      const result = await message('save', { title: (page.title || entry.title).slice(0, 160), description: (page.description || '').slice(0, 10000),
+        externalUrl: page.urls[0], contentType: 'episode', seasonId, episodeNumber: entry.number, published });
+      result.duplicate ? duplicateCount++ : savedCount++;
+    } catch (error) { failures.push('E' + entry.number + ': ' + error.message); }
+  }
+  $('batch-progress').textContent = savedCount + ' salvos, ' + duplicateCount + ' já cadastrados, ' + failures.length + ' falhas.';
+  status(failures.length ? failures.join(' · ').slice(0, 1000) : 'Temporada importada. Confira os episódios no painel.', Boolean(failures.length));
+  busy = false; $('batch-send').disabled = false; updateButtons();
+};
 async function initialize() {
   const settings = await chrome.storage.local.get('acervoOrigin'); origin = settings.acervoOrigin || ''; $('origin').value = origin;
   saved = (await chrome.storage.session.get('filmMetadata')).filmMetadata;
   $('restore').hidden = !saved; $('forget').hidden = !saved; $('connection').open = !origin;
-  await capture();
+  if (new URLSearchParams(location.search).has('season')) {\n    const pending = (await chrome.storage.session.get('seasonCapture')).seasonCapture;\n    await chrome.storage.session.remove('seasonCapture');\n    fromContext = true; showBatch(pending?.entries || []);\n  } else await capture();
   if (origin) {
     try {
       origin = acervoOrigin(origin); await loadOptions();
