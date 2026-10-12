@@ -1304,3 +1304,6 @@ progress {
 .admin-series-info p { margin: .5rem 0; font-size: .9rem; }
 .admin-series-info > .button { margin: .5rem 0 1rem; }
 @media (max-width: 700px) { .admin-series-grid { grid-template-columns: 1fr; } }
+
+/* Capas verticais importadas conservam o cartaz completo, sem recortar. */
+.thumbnail.thumbnail-portrait { aspect-ratio: 2 / 3; }

@@ -49,6 +49,28 @@ async function message(action, body) {
   if (!response?.ok) throw new Error(response?.message || 'A extensão não recebeu resposta. Tente novamente.');
   return response.data;
 }
+
+// A extensão só acessa capas cujo domínio foi autorizado no clique de importar.
+// URLs desconhecidas ou com redirecionamento não impedem o cadastro dos filmes.
+function permittedImageHost(raw) {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+        url.href.length > 2048 ||
+        !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(url.hostname) ||
+        /(?:^|\.)(?:localhost|local|internal|lan|test|invalid)$/.test(url.hostname)) return null;
+    return url.origin + '/*';
+  } catch { return null; }
+}
+async function uploadMovieCover(result, imageUrl) {
+  if (result.duplicate || !result.id || !imageUrl) return 'skipped';
+  const host = permittedImageHost(imageUrl);
+  if (!host) return 'skipped';
+  if (!(await chrome.permissions.contains({ origins: [host] }))) return 'missing-permission';
+  await message('uploadCover', { videoId: result.id, url: imageUrl });
+  return 'saved';
+}
+
 async function loadOptions(action = 'options') {
   ready = false; updateButtons();
   const data = await message(action);
@@ -147,11 +169,24 @@ $('form').onsubmit = async (event) => {
   event.preventDefault(); if (busy || !ready) return;
   busy = true; updateButtons(); $('result-link').hidden = true; status('Salvando no ACERVO…');
   try {
+    const imageHost = $('mode').value === 'movie' ? permittedImageHost(captured.coverUrl) : null;
+    if (imageHost && !(await chrome.permissions.contains({ origins: [imageHost] }))) {
+      // A permissão é opcional: negar acesso à imagem não impede o cadastro.
+      await chrome.permissions.request({ origins: [imageHost] }).catch(() => false);
+    }
     await rememberDestination();
     const body = { title: $('title').value.trim(), description: $('description').value.slice(0, 10000), externalUrl: $('player').value, contentType: $('mode').value, published: $('published').checked };
     if (body.contentType === 'episode') { body.seasonId = $('season').value; if ($('episode').value !== '') body.episodeNumber = Number($('episode').value); }
     else body.categoryId = $('category').value;
+    // Solicitar acesso à capa enquanto o clique do usuário ainda está ativo.
     const result = await message('save', body); $('episode').value = ''; showResult(result);
+    if (body.contentType === 'movie' && !result.duplicate) {
+      try {
+        const cover = await uploadMovieCover(result, captured.coverUrl);
+        if (cover === 'saved') status('Vídeo e capa salvos automaticamente: ' + result.title + '.');
+        else if (cover === 'missing-permission') status('Vídeo salvo. A capa exige permissão de acesso ao domínio da imagem.', true);
+      } catch (error) { status('Vídeo salvo, mas não foi possível salvar a capa: ' + error.message, true); }
+    }
   } catch (e) { status(e.message, true); }
   finally { busy = false; updateButtons(); }
 };
@@ -232,7 +267,8 @@ function showMovies(entries, error = '') {
       const url = new URL(entry.url);
       const title = entry.title.replace(/\s+/g, ' ').trim().slice(0, 160);
       if (url.protocol !== 'https:' || url.username || url.password || !title || seen.has(url.href)) continue;
-      seen.add(url.href); movieEntries.push({ title, url: url.href });
+      const coverUrl = permittedImageHost(entry.coverUrl) ? new URL(entry.coverUrl).href : null;
+      seen.add(url.href); movieEntries.push({ title, url: url.href, coverUrl });
       if (movieEntries.length >= 120) break;
     } catch {}
   }
@@ -260,12 +296,15 @@ $('batch-send').onclick = async () => {
     ' no ACERVO? Confirme que você pode usar esses vídeos e revise os títulos selecionados.')) return;
   let hosts;
   try {
-    hosts = [...new Set(selected.map((entry) => 'https://' + new URL(entry.url).hostname + '/*'))];
+    hosts = [...new Set([
+      ...selected.map((entry) => new URL(entry.url).origin + '/*'),
+      ...selected.map((entry) => permittedImageHost(entry.coverUrl)).filter(Boolean)
+    ])];
     if (!(await chrome.permissions.request({ origins: hosts }))) return status('Permita o acesso aos links selecionados.', true);
   } catch (error) { return status(error.message, true); }
   busy = true; updateButtons(); $('batch-send').disabled = true;
-  let savedCount = 0, duplicateCount = 0;
-  const failures = [], failedItems = [];
+  let savedCount = 0, duplicateCount = 0, coverCount = 0, coverMissing = 0;
+  const coverWarnings = [], failures = [], failedItems = [];
   try {
     await rememberDestination();
     for (const [index, entry] of selected.entries()) {
@@ -278,7 +317,21 @@ $('batch-send').onclick = async () => {
         if (movieMode) body.categoryId = destination.id;
         else { body.seasonId = destination.id; body.episodeNumber = entry.number; }
         const result = await message('save', body);
-        if (result.duplicate) duplicateCount++; else savedCount++;
+        if (result.duplicate) {
+          duplicateCount++;
+        } else {
+          savedCount++;
+          if (movieMode) {
+            try {
+              const cover = await uploadMovieCover(result, entry.coverUrl || page.coverUrl);
+              if (cover === 'saved') coverCount++;
+              else { coverMissing++; if (cover === 'missing-permission') coverWarnings.push(entry.title + ': domínio da imagem não autorizado'); }
+            } catch (error) {
+              coverMissing++;
+              coverWarnings.push(entry.title + ': ' + error.message);
+            }
+          }
+        }
       } catch (error) {
         failedItems.push(entry);
         failures.push(entry.title.slice(0, 60) + ': ' + error.message);
@@ -293,10 +346,12 @@ $('batch-send').onclick = async () => {
     const retryIndexes = new Set(failedItems.map((entry) => source.indexOf(entry)));
     if (movieMode) movieSelection = retryIndexes; else seasonSelection = retryIndexes;
     updateButtons(); renderBatch();
-    $('batch-progress').textContent = savedCount + ' salvos, ' + duplicateCount + ' duplicados, ' + failures.length + ' falhas.';
-    status(failures.length ? failures.slice(0, 12).join(' · ').slice(0, 1300) +
-      (failures.length > 12 ? ' · e outras ' + (failures.length - 12) + ' falhas.' : '')
-      : 'Lote concluído. Confira os vídeos no painel do ACERVO.', Boolean(failures.length));
+    $('batch-progress').textContent = savedCount + ' salvos, ' + duplicateCount + ' duplicados, ' +
+      coverCount + ' capas salvas, ' + coverMissing + ' sem capa, ' + failures.length + ' falhas de vídeo.';
+    const issues = [...failures, ...coverWarnings];
+    status(issues.length ? issues.slice(0, 10).join(' · ').slice(0, 1300) +
+      (issues.length > 10 ? ' · e outras ' + (issues.length - 10) + ' mensagens.' : '')
+      : 'Importação concluída. Confira os vídeos e as capas no painel do ACERVO.', Boolean(issues.length));
   }
 };
 async function initialize() {

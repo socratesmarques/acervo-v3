@@ -48,3 +48,25 @@ A importação de temporadas, o envio rápido e o menu para adicionar um episód
 - Coloca a categoria e o estado de publicação acima dos filmes, mantém as seleções manuais e mostra os erros próximos ao progresso.
 - Após o lote, mantém marcados somente os itens com falha para uma nova tentativa; itens salvos ou duplicados não ficam marcados.
 - A V2 continua em uma branch com Pull Request de rascunho. Teste com 2 vídeos, sem publicar, antes de tentar um lote maior.
+
+## V2 1.1.0 — Capas automáticas da página original
+
+Implementação isolada na branch feature/extensao-v2-capas-do-site. Sem TMDB e sem chave de API.
+
+1. No catálogo, o importador procura o cartaz em cada cartão selecionado.
+2. Se a imagem não estiver no cartão, procura metadados de imagem na página do filme.
+3. Ao clicar em Importar selecionados, o navegador pode solicitar acesso aos domínios das páginas e imagens.
+4. Após salvar cada novo filme, a extensão copia a imagem JPG, PNG ou WebP de até 4 MB para o armazenamento do ACERVO, sem confirmação individual.
+5. Se a imagem estiver inacessível, o vídeo fica salvo com a capa padrão, e o relatório mostra quantas imagens foram aplicadas.
+6. Duplicados não são alterados. A importação individual também tenta salvar a capa automaticamente.
+7. Capa retrato aparece em 2:3; capa paisagem permanece 16:9.
+
+### Para testar sem alterar produção
+
+- Faça backup do banco e da mídia.
+- Execute em instância isolada do Acervo com volumes separados e a migração 007_source_cover_aspect.sql.
+- Recompile backend e frontend; recarregue a extensão na tela chrome://extensions.
+- Confira a versão V2 · 1.1.0 CAPAS; importe inicialmente dois filmes como rascunho.
+- Não faça merge ou implante em produção até conferir o resultado.
+
+Somente reutilize imagens quando tiver direito ou autorização. A extensão não contorna logins, DRM ou bloqueios de CDN.

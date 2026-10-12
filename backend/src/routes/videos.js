@@ -61,6 +61,7 @@ async function makeThumbnail(buffer, target) {
       .resize(1280, 720, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toFile(target);
+    return info.height > info.width * 1.15;
   } catch {
     fail(
       400,
@@ -231,6 +232,7 @@ export default async function videoRoutes(app) {
   });
   app.post("/api/videos/:id/thumbnail", { preHandler: admin }, async (req) => {
     const id = uuid.parse(req.params.id),
+      onlyIfMissing = req.query?.ifMissing === "1",
       directory = path.join(config.STORAGE_DIR, "temp");
     await mkdir(directory, { recursive: true });
     const file = path.join(directory, `${randomUUID()}.jpg`);
@@ -240,7 +242,7 @@ export default async function videoRoutes(app) {
       });
       if (!part || part.fieldname !== "thumbnail")
         fail(400, "Envie uma thumbnail.");
-      await makeThumbnail(await part.toBuffer(), file);
+      const portrait = await makeThumbnail(await part.toBuffer(), file);
       await transaction(async (db) => {
         const {
           rows: [video],
@@ -248,10 +250,13 @@ export default async function videoRoutes(app) {
         if (!video) fail(404, "Vídeo não encontrado.");
         if (video.status !== "ready")
           fail(409, "Aguarde o processamento antes de trocar a thumbnail.");
+        // O importador usa ifMissing=1 para nunca substituir a capa anterior.
+        if (onlyIfMissing && video.custom_thumbnail)
+          fail(409, "Este filme já possui capa. Nenhuma imagem foi substituída.");
         await putFile(video.storage_driver, `${id}/thumbnail.jpg`, file);
         await db.query(
-          "UPDATE videos SET custom_thumbnail=true,updated_at=now() WHERE id=$1",
-          [id],
+          "UPDATE videos SET custom_thumbnail=true,poster_vertical=$2,updated_at=now() WHERE id=$1",
+          [id, portrait],
         );
       });
       return { ok: true };

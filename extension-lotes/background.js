@@ -1,6 +1,57 @@
 import { acervoOrigin, hostPattern } from './shared.js';
 import { requestOnSite } from './bridge.js';
 let saving = false;
+
+function photoLink(value) {
+  const url = new URL(value);
+  if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+      url.href.length > 2048 ||
+      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(url.hostname) ||
+      /(?:^|\.)(?:localhost|local|internal|lan|test|invalid)$/.test(url.hostname))
+    throw new Error('Endereço da capa não permitido.');
+  return url;
+}
+async function getCoverData(value) {
+  const url = photoLink(value);
+  if (!(await chrome.permissions.contains({ origins: [url.origin + '/*'] })))
+    throw new Error('Permissão para o domínio da capa não concedida.');
+  let response;
+  try {
+    response = await fetch(url.href, {
+      credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(12000)
+    });
+  } catch { throw new Error('Não consegui acessar a imagem da capa.'); }
+  if (!response.ok) throw new Error('O servidor da imagem recusou o download.');
+  const mime = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  if (!['image/jpeg','image/png','image/webp'].includes(mime))
+    throw new Error('O arquivo da capa não é uma imagem JPG, PNG ou WebP.');
+  const maximum = 4 * 1024 * 1024;
+  if (Number(response.headers.get('content-length') || 0) > maximum || !response.body)
+    throw new Error('Capa grande demais ou sem conteúdo.');
+  const reader = response.body.getReader(), parts = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > maximum) {
+        await reader.cancel().catch(() => {});
+        throw new Error('Capa maior que 4 MB.');
+      }
+      parts.push(value);
+    }
+  } catch (error) { throw error; }
+  if (size < 100) throw new Error('Imagem da capa vazia.');
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const part of parts) { bytes.set(part, offset); offset += part.length; }
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 32768)
+    binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+  return { mime, base64: btoa(binary) };
+}
+
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // O status "complete" inclui imagens, anúncios e players externos. Para o
 // importador basta o documento estar pronto para receber scripts.
@@ -39,7 +90,7 @@ async function siteTab(origin, create) {
 }
 export async function handleMessage(message) {
   const origin = acervoOrigin(message.origin);
-  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage'].includes(message.action)) throw new Error('Operação inválida.');
+  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage', 'uploadCover'].includes(message.action)) throw new Error('Operação inválida.');
   if (message.action === 'captureEpisode' || message.action === 'capturePage') {
     const target = new URL(message.body.url);
     if (target.protocol !== 'https:' || target.username || target.password) throw new Error('Link inválido.');
@@ -59,6 +110,20 @@ export async function handleMessage(message) {
       }
       return { ok: true, data: capture };
     } finally { await chrome.tabs.remove(tab.id).catch(() => {}); }
+  }
+  if (message.action === 'uploadCover') {
+    const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
+    if (configured !== origin) throw new Error('Reconecte a extensão ao ACERVO.');
+    const videoId = message.body?.videoId;
+    if (typeof videoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(videoId))
+      throw new Error('ID de filme inválido.');
+    const cover = await getCoverData(message.body?.url);
+    const tabId = await siteTab(origin, false);
+    const [injected] = await chrome.scripting.executeScript({
+      target: { tabId }, world: 'ISOLATED', func: requestOnSite,
+      args: [{ origin, operation: 'uploadCover', body: { videoId, ...cover } }]
+    });
+    return injected?.result || { ok: false, message: 'Não foi possível salvar a capa no ACERVO.' };
   }
   const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
   if (configured !== origin) throw new Error('O endereço mudou. Clique em Conectar.');

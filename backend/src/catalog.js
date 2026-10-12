@@ -31,6 +31,7 @@ export function dto(v) {
     title: v.title,
     description: v.description,
     releaseYear: v.release_year,
+    posterVertical: !!v.poster_vertical,
     episodeCoverDefault: !!v.episode_cover_default,
     categoryId: v.category_id,
     category: v.category,
