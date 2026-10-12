@@ -13,6 +13,7 @@ import importRoutes from "./routes/imports.js";
 import providerRoutes from "./routes/providers.js";
 import seriesRoutes from "./routes/series.js";
 import videoRoutes from "./routes/videos.js";
+import tmdbRoutes from "./routes/tmdb.js";
 import libraryRoutes from "./routes/library.js";
 export async function buildApp({ logger = true } = {}) {
   const app = Fastify({
@@ -96,6 +97,7 @@ export async function buildApp({ logger = true } = {}) {
   });
   await app.register(authRoutes);
   await app.register(videoRoutes);
+  await app.register(tmdbRoutes);
   await app.register(seriesRoutes);
   await app.register(providerRoutes);
   await app.register(importRoutes);

@@ -12,6 +12,7 @@ const env = z
     TRUST_PROXY: z.enum(["true", "false"]).default("false"),
     MAX_UPLOAD_MB: z.coerce.number().int().min(1).max(102400).default(10240),
     FFMPEG_TIMEOUT_SECONDS: z.coerce.number().int().min(30).default(14400),
+    TMDB_READ_ACCESS_TOKEN: z.string().trim().optional(),
     S3_BUCKET: z.string().optional(),
     S3_REGION: z.string().default("auto"),
     S3_ENDPOINT: z.preprocess(

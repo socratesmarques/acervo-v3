@@ -250,7 +250,7 @@ export default async function videoRoutes(app) {
           fail(409, "Aguarde o processamento antes de trocar a thumbnail.");
         await putFile(video.storage_driver, `${id}/thumbnail.jpg`, file);
         await db.query(
-          "UPDATE videos SET custom_thumbnail=true,updated_at=now() WHERE id=$1",
+          "UPDATE videos SET custom_thumbnail=true,poster_vertical=false,updated_at=now() WHERE id=$1",
           [id],
         );
       });
