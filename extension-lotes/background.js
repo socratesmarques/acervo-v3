@@ -68,10 +68,10 @@ function installContextMenu() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: contextMenuId,
-      title: 'Adicionar episódio ao ACERVO',
+      title: 'Adicionar episódio (ACERVO V2)',
       contexts: ['link', 'page']
     });
-    chrome.contextMenus.create({ id: seasonMenuId, title: 'Importar temporada para o ACERVO', contexts: ['page'] });
+    chrome.contextMenus.create({ id: seasonMenuId, title: 'Importar temporada (ACERVO V2)', contexts: ['page'] });
     chrome.contextMenus.create({ id: movieMenuId, title: 'Importar filmes desta página (ACERVO V2)', contexts: ['page'] });
   });
 }
