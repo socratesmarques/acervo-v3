@@ -1304,3 +1304,30 @@ progress {
 .admin-series-info p { margin: .5rem 0; font-size: .9rem; }
 .admin-series-info > .button { margin: .5rem 0 1rem; }
 @media (max-width: 700px) { .admin-series-grid { grid-template-columns: 1fr; } }
+
+/* Apenas filmes com pôster TMDB aprovado mudam de 16:9 para 2:3. */
+.thumbnail.thumbnail-portrait { aspect-ratio: 2 / 3; }
+.tmdb-manager { width: 100%; }
+.tmdb-intro { margin: 16px 0; color: #bac1b6; }
+.tmdb-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.tmdb-list { display: grid; gap: 18px; }
+.tmdb-item { padding: 18px; border: 1px solid #343b33; background: #151b16; border-radius: 14px; }
+.tmdb-item-heading { display: flex; gap: 12px; justify-content: space-between; align-items: baseline; flex-wrap: wrap; }
+.tmdb-item-heading h3 { margin: 0; font-size: 18px; }
+.tmdb-item-heading small,.tmdb-note { color: #c0c8b4; font-size: 13px; }
+.tmdb-search-controls { display: grid; grid-template-columns: minmax(160px,1fr) 125px auto; gap: 10px; align-items: end; margin: 13px 0; }
+.tmdb-search-controls label { display: grid; font-size: 12px; gap: 6px; }
+.tmdb-search-controls input { width: 100%; min-width: 0; }
+.tmdb-choices { display: grid; grid-template-columns: repeat(auto-fill,minmax(110px,1fr)); gap: 10px; margin: 14px 0; }
+.tmdb-choice { display: flex; flex-direction: column; gap: 5px; padding: 7px; background: #20261f; border: 2px solid #3a433a; border-radius: 9px; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.tmdb-choice:hover,.tmdb-choice-selected { border-color: #d2f86a; }
+.tmdb-choice img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 5px; }
+.tmdb-choice strong { font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }
+.tmdb-choice small { opacity: .8; }
+.tmdb-saved { color: #c8f58d; }
+.tmdb-pagination { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-top: 18px; }
+.tmdb-credits { margin: 36px 0 10px; color: #aab3a9; font-size: 12px; }
+.tmdb-credits a { text-decoration: underline; }
+.tmdb-footer-credit { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 10px; max-width: 330px; }
+.tmdb-footer-credit img { width: 34px; height: 27px; object-fit: contain; }
+@media(max-width:640px) { .tmdb-search-controls { grid-template-columns: 1fr 1fr; } .tmdb-search-controls label:first-child { grid-column: 1 / -1; } .tmdb-search-controls button { grid-column: 1 / -1; } }

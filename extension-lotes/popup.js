@@ -104,6 +104,12 @@ function showResult(result, previous = false) {
   if (season && season.id === result.seasonId && result.nextEpisodeNumber) season.nextEpisodeNumber = result.nextEpisodeNumber;
   updateSeasonNote();
 }
+$('tmdb-posters').onclick = async () => {
+  try {
+    const target = acervoOrigin($('origin').value.trim());
+    await chrome.tabs.create({ url: target + '/admin/posters' });
+  } catch (error) { status(error.message, true); }
+};
 $('connect').onclick = async () => {
   try {
     origin = acervoOrigin($('origin').value.trim());

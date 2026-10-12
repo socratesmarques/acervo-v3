@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   RefreshCw,
   Globe,
+  Images,
 } from "lucide-react";
 import useData from "../hooks/useData";
 import { api } from "../services/api";
@@ -24,6 +25,7 @@ import { NewEpisode } from "../components/admin/SeriesManager";
 import SeriesList, { NewSeries, EditSeries } from "./AdminSeries";
 import ImportVideo from "./ImportVideo";
 import Providers from "./Providers";
+import PosterManager from "./PosterManager";
 import Feedback from "../components/Feedback";
 import { formatDate } from "../utils/format";
 const statusLabel = {
@@ -483,6 +485,7 @@ export default function Admin() {
           ["/categories", "Categorias", Folder],
           ["/users", "Pessoas", Users],
           ["/providers", "Provedores", Globe],
+          ["/posters", "Capas TMDB", Images],
         ].map(([path, label, Icon]) => (
           <NavLink end={path === ""} key={path} to={`/admin${path}`}>
             <Icon size={18} />
@@ -504,6 +507,7 @@ export default function Admin() {
           <Route path="users" element={<UserList />} />
           <Route path="import" element={<ImportVideo />} />
           <Route path="providers" element={<Providers />} />
+          <Route path="posters" element={<PosterManager />} />
           <Route
             path="*"
             element={<p>Página administrativa não encontrada.</p>}
