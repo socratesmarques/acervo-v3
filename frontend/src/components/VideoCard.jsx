@@ -9,13 +9,13 @@ export default function VideoCard({ video, showProgress = false }) {
       className="video-card group"
       aria-label={`Assistir ${video.title}`}
     >
-      <div className="thumbnail">
+      <div className={video.contentType === "movie" && video.posterVertical ? "thumbnail thumbnail-portrait" : "thumbnail"}>
         <img
           src={video.thumbnail}
           alt=""
           loading="lazy"
-          width="640"
-          height="360"
+          width={video.posterVertical ? 480 : 640}
+          height={video.posterVertical ? 720 : 360}
         />
         <span className="card-play">
           <Play size={23} fill="currentColor" aria-hidden="true" />
