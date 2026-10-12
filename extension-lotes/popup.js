@@ -14,10 +14,11 @@ function fillSelect(id, items, label, selected, placeholder) {
 function updateButtons() {
   const episode = $('mode').value === 'episode';
   $('movie-fields').hidden = episode; $('episode-fields').hidden = !episode;
-  $('category').required = !episode; $('category').disabled = episode;
-  $('series').required = episode; $('series').disabled = !episode;
-  $('season').required = episode; $('season').disabled = !episode;
-  $('episode').disabled = !episode;
+  $('category').required = !episode; $('category').disabled = episode || busy;
+  $('series').required = episode; $('series').disabled = !episode || busy;
+  $('season').required = episode; $('season').disabled = !episode || busy;
+  $('episode').disabled = !episode || busy;
+  $('published').disabled = busy;
   $('fields').disabled = busy;
   $('send').disabled = busy || !ready || !captured.urls.length || !($('title').value.trim()) || !(episode ? $('season').value : $('category').value);
   $('send').textContent = busy ? 'Salvando…' : `${$('published').checked ? 'Publicar' : 'Salvar'} ${episode ? 'episódio' : 'vídeo'}`;
