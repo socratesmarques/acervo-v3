@@ -759,6 +759,23 @@ test("fluxo completo de API, permissões, processamento e persistência", async 
   );
 });
 
+test("capas TMDB exigem administrador e não sobrescrevem sem aprovação", async () => {
+  assert.equal((await request("GET", "/api/admin/tmdb/status", undefined, null)).statusCode, 401);
+  assert.equal((await request("GET", "/api/admin/tmdb/status", undefined, viewerSession)).statusCode, 403);
+  const status = await request("GET", "/api/admin/tmdb/status");
+  assert.equal(status.statusCode, 200, status.body);
+  assert.equal(typeof status.json().configured, "boolean");
+
+  const listing = await request("GET", "/api/admin/tmdb/missing-posters?limit=5");
+  assert.equal(listing.statusCode, 200, listing.body);
+  assert(Array.isArray(listing.json().items));
+  assert.equal((await request("GET", "/api/admin/tmdb/search?title=Filme", undefined, viewerSession)).statusCode, 403);
+  assert.equal((await request("POST", "/api/admin/tmdb/apply-poster",
+    { videoId: randomUUID(), tmdbId: 1234 }, viewerSession)).statusCode, 403);
+  assert.equal((await request("POST", "/api/admin/tmdb/apply-poster",
+    { videoId: randomUUID(), tmdbId: 1234 }, null)).statusCode, 401);
+});
+
 test("HLS gera 1080p, 720p e 480p sem áudio", async () => {
   const { run, transcode } = await import("../src/media.js");
   const temporary = await mkdtemp(path.join(os.tmpdir(), "acervo-hls-"));
