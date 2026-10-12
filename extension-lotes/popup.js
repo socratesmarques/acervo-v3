@@ -1,7 +1,11 @@
 import { acervoOrigin, hostPattern, preferenceKey } from './shared.js';
 const $ = (id) => document.getElementById(id);
-let captured = { urls: [], description: '', sourcePage: '' }, saved, origin = '', options, preferences = {}, ready = false, busy = false, fromContext = false, seasonEntries = [], movieEntries = [], batchMode = '';
-function status(text, error = false) { $('status').textContent = text; $('status').dataset.error = String(error); }
+let captured = { urls: [], description: '', sourcePage: '' }, saved, origin = '', options, preferences = {}, ready = false, busy = false, fromContext = false, seasonEntries = [], movieEntries = [], batchMode = '', movieSelection = new Set(), seasonSelection = new Set();
+function status(text, error = false) {
+  for (const el of [$('status'), $('batch-status')]) {
+    if (el) { el.textContent = text; el.dataset.error = String(error); }
+  }
+}
 function fillSelect(id, items, label, selected, placeholder) {
   const select = $(id); select.replaceChildren(new Option(placeholder, ''));
   for (const item of items) select.add(new Option(label(item), item.id));
@@ -51,7 +55,7 @@ async function loadOptions(action = 'options') {
   const key = preferenceKey(origin, options.userId);
   preferences = (await chrome.storage.local.get(key))[key] || {};
   $('mode').value = batchMode === 'movies' ? 'movie' : fromContext ? 'episode' : preferences.mode === 'episode' ? 'episode' : 'movie';
-  $('published').checked = preferences.published === true;
+  $('published').checked = batchMode ? false : preferences.published === true;
   fillSelect('category', options.categories, (c) => c.name, preferences.categoryId, options.categories.length ? 'Selecione uma categoria' : 'Crie uma categoria no painel');
   fillSelect('series', options.series, (s) => s.title, preferences.seriesId, options.series.length ? 'Selecione uma série' : 'Crie uma série no painel');
   updateSeasons(preferences.seasonBySeries?.[$('series').value]);
@@ -165,11 +169,15 @@ function renderBatch() {
   if (batchMode === 'movies') {
     for (const [index, entry] of movieEntries.entries()) {
       const row = document.createElement('label'); row.className = 'check';
-      const check = document.createElement('input'); check.type = 'checkbox'; check.checked = true; check.value = String(index);
+      const check = document.createElement('input'); check.type = 'checkbox'; check.checked = movieSelection.has(index); check.value = String(index);
+      check.onchange = () => {
+        if (check.checked) movieSelection.add(index); else movieSelection.delete(index);
+        $('batch-send').disabled = busy || !ready || movieSelection.size === 0 || !$('category').value;
+      };
       const name = document.createElement('span'); name.textContent = entry.title;
       row.append(check, name); list.append(row);
     }
-    $('batch-send').disabled = busy || !ready || !movieEntries.length || !$('category').value;
+    $('batch-send').disabled = busy || !ready || !movieSelection.size || !$('category').value;
     $('batch-progress').textContent = movieEntries.length
       ? movieEntries.length + ' links candidatos encontrados. Desmarque o que não for filme e selecione a categoria.'
       : 'Nenhum link identificado. Abra uma listagem de filmes e tente novamente.';
@@ -180,12 +188,16 @@ function renderBatch() {
   for (const entry of entries) {
     const index = seasonEntries.indexOf(entry);
     const row = document.createElement('label'); row.className = 'check';
-    const check = document.createElement('input'); check.type = 'checkbox'; check.checked = true; check.value = String(index);
+    const check = document.createElement('input'); check.type = 'checkbox'; check.checked = seasonSelection.has(index); check.value = String(index);
+    check.onchange = () => {
+      if (check.checked) seasonSelection.add(index); else seasonSelection.delete(index);
+      $('batch-send').disabled = busy || !ready || seasonSelection.size === 0 || !$('season').value;
+    };
     const name = document.createElement('span');
     name.textContent = 'E' + String(entry.number).padStart(2, '0') + ' · ' + entry.title;
     row.append(check, name); list.append(row);
   }
-  $('batch-send').disabled = busy || !ready || !entries.length;
+  $('batch-send').disabled = busy || !ready || !entries.length || !entries.some((entry) => seasonSelection.has(seasonEntries.indexOf(entry)));
   const available = [...new Set(seasonEntries.map((entry) => entry.seasonLabel || entry.seasonNumber).filter(Boolean))];
   $('batch-progress').textContent = entries.length
     ? entries.length + ' episódios dublados encontrados para ' + (season.title || 'T' + season.number) + '.'
@@ -193,9 +205,16 @@ function renderBatch() {
       ? 'Nenhum episódio da temporada selecionada. Temporadas detectadas: ' + (available.join(', ') || 'não identificadas') + '.'
       : 'Nenhum link de episódio encontrado nesta página.';
 }
+function moveDestinationToBatch() {
+  const destination = batchMode === 'movies' ? $('movie-fields') : $('episode-fields');
+  $('batch-destination').append(destination, $('published').closest('label'));
+  $('form').hidden = true;
+}
 function showBatch(entries) {
   batchMode = 'season';
   seasonEntries = entries.filter((entry) => entry?.url && Number.isInteger(entry.number));
+  seasonSelection = new Set(seasonEntries.map((_, index) => index));
+  moveDestinationToBatch();
   $('batch-heading').textContent = 'Importar temporada';
   $('batch-help').textContent = 'Selecione os episódios dublados. Confira série e temporada antes do envio.';
   $('batch').hidden = false; $('send').hidden = true; $('review').hidden = true;
@@ -216,6 +235,8 @@ function showMovies(entries, error = '') {
       if (movieEntries.length >= 120) break;
     } catch {}
   }
+  movieSelection = new Set(movieEntries.map((_, index) => index));
+  moveDestinationToBatch();
   $('batch-heading').textContent = 'Importar filmes desta página';
   $('batch-help').textContent = 'Os links são candidatos, não filmes confirmados. Desmarque menus, séries e resultados incorretos, escolha a categoria e revise antes de enviar.';
   $('batch').hidden = false; $('send').hidden = true; $('review').hidden = true;
@@ -243,7 +264,7 @@ $('batch-send').onclick = async () => {
   } catch (error) { return status(error.message, true); }
   busy = true; updateButtons(); $('batch-send').disabled = true;
   let savedCount = 0, duplicateCount = 0;
-  const failures = [];
+  const failures = [], failedItems = [];
   try {
     await rememberDestination();
     for (const [index, entry] of selected.entries()) {
@@ -257,13 +278,20 @@ $('batch-send').onclick = async () => {
         else { body.seasonId = destination.id; body.episodeNumber = entry.number; }
         const result = await message('save', body);
         if (result.duplicate) duplicateCount++; else savedCount++;
-      } catch (error) { failures.push(entry.title.slice(0, 60) + ': ' + error.message); }
+      } catch (error) {
+        failedItems.push(entry);
+        failures.push(entry.title.slice(0, 60) + ': ' + error.message);
+      }
       // API: máximo de 60 gravações por minuto.
       if (index < selected.length - 1) await new Promise((resolve) => setTimeout(resolve, 1400));
     }
   } catch (error) { failures.push('Falha no lote: ' + error.message); }
   finally {
-    busy = false; updateButtons(); renderBatch();
+    busy = false;
+    // Repetir apenas os itens que falharam.
+    const retryIndexes = new Set(failedItems.map((entry) => source.indexOf(entry)));
+    if (movieMode) movieSelection = retryIndexes; else seasonSelection = retryIndexes;
+    updateButtons(); renderBatch();
     $('batch-progress').textContent = savedCount + ' salvos, ' + duplicateCount + ' duplicados, ' + failures.length + ' falhas.';
     status(failures.length ? failures.slice(0, 12).join(' · ').slice(0, 1300) +
       (failures.length > 12 ? ' · e outras ' + (failures.length - 12) + ' falhas.' : '')
@@ -287,7 +315,7 @@ async function initialize() {
   if (origin) {
     try {
       origin = acervoOrigin(origin); await loadOptions();
-      if (!$('batch').hidden) { renderBatch(); status($('batch-progress').textContent, !seasonEntries.length); return; }
+      if (!$('batch').hidden) { renderBatch(); status($('batch-progress').textContent, !(batchMode === 'movies' ? movieEntries.length : seasonEntries.length)); return; }
       const job = (await chrome.storage.session.get('quickImportJob')).quickImportJob;
       if (job?.origin === origin && job.status === 'done') showResult(job.data, true);
       else if (job?.origin === origin && job.status === 'error') status(`Último envio sem confirmação: ${job.message}`, true);
