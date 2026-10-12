@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Enviar para ACERVO</title><link rel="stylesheet" href="popup.css"></head>
 <body>
-<header><h1>ACERVO<span>•</span></h1><span class="badge">V2 · 1.0.1 TESTES</span></header>
+<header><h1>ACERVO<span>•</span></h1><span class="badge">V2 · 1.1.0 CAPAS</span></header>
 <details id="connection"><summary id="connection-label">Conectar ao seu ACERVO</summary>
 <label>Endereço do seu ACERVO<input id="origin" type="url" placeholder="https://seu-acervo.example" maxlength="300"></label>
 <div class="actions"><button id="connect" type="button">Conectar</button><button id="login" type="button">Abrir ACERVO / entrar</button></div>
@@ -15,7 +15,8 @@
 <button id="batch-send" type="button">Importar selecionados</button>
 <p id="batch-progress" role="status" aria-live="polite"></p>
 <p id="batch-status" role="status" aria-live="polite"></p>
-<p class="hint">Mantenha esta janela aberta até terminar. O envio é sequencial para respeitar o limite do servidor. Somente players aceitos pelo ACERVO serão cadastrados.</p>
+<p class="hint">As capas são importadas automaticamente, sem confirmação individual. O navegador poderá pedir autorização para os domínios das imagens. Se uma imagem não estiver acessível, o filme é salvo sem capa.</p>
+<p class="hint">Mantenha esta janela aberta até terminar. Somente players aceitos pelo ACERVO serão cadastrados.</p>
 </section>
 <form id="form">
 <fieldset id="fields">

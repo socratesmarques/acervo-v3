@@ -56,7 +56,8 @@ function permittedImageHost(raw) {
   try {
     const url = new URL(raw);
     if (url.protocol !== 'https:' || url.username || url.password || url.port ||
-        url.href.length > 2048 || !url.hostname.includes('.') ||
+        url.href.length > 2048 ||
+        !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(url.hostname) ||
         /(?:^|\.)(?:localhost|local|internal|lan|test|invalid)$/.test(url.hostname)) return null;
     return url.origin + '/*';
   } catch { return null; }
