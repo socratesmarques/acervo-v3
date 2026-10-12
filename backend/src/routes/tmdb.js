@@ -27,10 +27,11 @@ async function tmdbGet(endpoint, params = {}) {
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
+  const accessToken = token();
   let response;
   try {
     response = await fetch(url, {
-      headers: { Authorization: 'Bearer ' + token(), Accept: 'application/json' },
+      headers: { Authorization: 'Bearer ' + accessToken, Accept: 'application/json' },
       signal: AbortSignal.timeout(10000), redirect: 'error'
     });
   } catch { fail(503, 'Consulta ao TMDB indisponível. Tente novamente.'); }

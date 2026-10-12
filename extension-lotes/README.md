@@ -48,3 +48,7 @@ A importação de temporadas, o envio rápido e o menu para adicionar um episód
 - Coloca a categoria e o estado de publicação acima dos filmes, mantém as seleções manuais e mostra os erros próximos ao progresso.
 - Após o lote, mantém marcados somente os itens com falha para uma nova tentativa; itens salvos ou duplicados não ficam marcados.
 - A V2 continua em uma branch com Pull Request de rascunho. Teste com 2 vídeos, sem publicar, antes de tentar um lote maior.
+
+## Novidade 1.1.0
+
+O botão Capas TMDB abre Admin → Capas TMDB no site, onde o administrador pesquisa e aprova pôsteres verticais para os filmes sem capa. Esta função exige configurar TMDB_READ_ACCESS_TOKEN no servidor e publicar o frontend/backend correspondente. As capas não são aplicadas sem confirmação.
