@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Enviar para ACERVO V2 — Lotes (Teste)",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Extensão separada para importar filmes e temporadas em lote.",
   "permissions": [
     "activeTab",

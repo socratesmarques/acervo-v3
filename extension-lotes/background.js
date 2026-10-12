@@ -1,16 +1,31 @@
 import { acervoOrigin, hostPattern } from './shared.js';
 import { requestOnSite } from './bridge.js';
 let saving = false;
-async function waitForTab(id) {
-  const initial = await chrome.tabs.get(id);
-  if (initial.status === 'complete') return;
-  await new Promise((resolve, reject) => {
-    const finish = (error) => { clearTimeout(timer); chrome.tabs.onUpdated.removeListener(listener); error ? reject(error) : resolve(); };
-    const listener = (tabId, change) => { if (tabId === id && change.status === 'complete') finish(); };
-    const timer = setTimeout(() => finish(new Error('A aba do ACERVO demorou para abrir. Abra-a e tente novamente.')), 15000);
-    chrome.tabs.onUpdated.addListener(listener);
-    chrome.tabs.get(id).then((tab) => { if (tab.status === 'complete') finish(); }).catch(finish);
-  });
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// O status "complete" inclui imagens, anúncios e players externos. Para o
+// importador basta o documento estar pronto para receber scripts.
+async function waitForTab(id, label = 'A página', timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = '';
+  while (Date.now() < deadline) {
+    try {
+      const tab = await chrome.tabs.get(id);
+      if (!tab.url || !/^https?:/.test(tab.url)) {
+        await delay(400);
+        continue;
+      }
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: id },
+        func: () => document.readyState
+      });
+      if (result?.result === 'interactive' || result?.result === 'complete') return;
+    } catch (error) {
+      lastError = error.message;
+    }
+    await delay(400);
+  }
+  throw new Error(label + ' demorou para carregar o documento.' +
+    (lastError ? ' Detalhe: ' + lastError : ' Abra a página em uma aba e tente novamente.'));
 }
 async function siteTab(origin, create) {
   const pattern = hostPattern(origin);
@@ -19,7 +34,7 @@ async function siteTab(origin, create) {
   let tab = tabs.find((tab) => { try { return new URL(tab.url).origin === origin; } catch { return false; } });
   if (!tab && create) tab = await chrome.tabs.create({ url: `${origin}/admin`, active: false });
   if (!tab) throw new Error('Abra uma aba do ACERVO ou clique em Conectar.');
-  await waitForTab(tab.id);
+  await waitForTab(tab.id, 'A aba do ACERVO', 35000);
   return tab.id;
 }
 export async function handleMessage(message) {
@@ -32,9 +47,17 @@ export async function handleMessage(message) {
     if (!allowed) throw new Error('Autorize o site de origem antes de importar.');
     const tab = await chrome.tabs.create({ url: target.href, active: false });
     try {
-      await waitForTab(tab.id);
-      const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
-      return { ok: true, data: result?.result };
+      await waitForTab(tab.id, 'A página do vídeo', 25000);
+      let capture;
+      // Players dinâmicos podem aparecer depois que o DOM inicial carrega.
+      // Tentativas limitadas, sem contornar bloqueios nem fazer downloads.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
+        capture = result?.result;
+        if (capture?.urls?.length) break;
+        if (attempt < 3) await delay(1400);
+      }
+      return { ok: true, data: capture };
     } finally { await chrome.tabs.remove(tab.id).catch(() => {}); }
   }
   const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
@@ -125,7 +148,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         throw new Error('Permita o acesso a este site para a extensão localizar o player.');
       const opened = await chrome.tabs.create({ url: target.href, active: false });
       temporaryTabId = opened.id;
-      await waitForTab(temporaryTabId);
+      await waitForTab(temporaryTabId, 'A página do episódio', 25000);
       const [injected] = await chrome.scripting.executeScript({
         target: { tabId: temporaryTabId },
         files: ['extract.js']
