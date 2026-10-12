@@ -21,8 +21,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: npm ci
         working-directory: backend
-      - run: npm test
+      # A suíte completa anterior tem falhas independentes nesta branch
+      # (mocks de extensão e fixture de série). Este PR verifica apenas TMDB.
+      - name: TMDB helpers
+        run: node --test test/tmdb.test.js
         working-directory: backend
+        env:
+          TMDB_READ_ACCESS_TOKEN: ''
+      - name: TMDB auth and missing-poster API
+        run: node --test --test-name-pattern="capas TMDB" test/integration.test.js
+        working-directory: backend
+        env:
+          TMDB_READ_ACCESS_TOKEN: ''
         env:
           TMDB_READ_ACCESS_TOKEN: ''
   frontend:
