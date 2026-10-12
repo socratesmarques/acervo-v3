@@ -4,6 +4,30 @@
     .replace(/^\s*(?:assistir(?: online)?|ver)\s+/i, '')
     .replace(/\s*[-|–—]\s*rede\s*canais.*$/i, '');
   const ignored = /^(?:home|in[ií]cio|filmes?|s[eé]ries?|animes?|categorias?|g[eê]neros?|busca(?:r)?|pesquisa(?:r)?|menu|entrar|login|cadastro|pr[oó]xim[oa]|anterior|voltar|data|ordem|ordenar|filtrar|p[aá]gina\s*\d+|dublad[oa]|legendad[oa]|assistir|ver|player|trailer|\d+)$/i;
+
+  const imageUrl = (value) => {
+    try {
+      if (!value || String(value).length > 2048) return null;
+      const link = new URL(value, location.href);
+      if (link.protocol !== 'https:' || link.username || link.password || link.port) return null;
+      link.hash = '';
+      return link.href;
+    } catch { return null; }
+  };
+  const coverImage = (scope) => {
+    if (!scope) return null;
+    const images = [...scope.querySelectorAll('img')].slice(0, 12);
+    for (const image of images) {
+      const candidates = [image.getAttribute('data-src'), image.getAttribute('data-original'),
+        image.getAttribute('data-lazy-src'), image.currentSrc, image.getAttribute('src')];
+      for (const candidate of candidates) {
+        const url = imageUrl(candidate);
+        if (url && !/(?:transparent|placeholder|spacer|sprite|pixel|logo|icon)/i.test(new URL(url).pathname))
+          return url;
+      }
+    }
+    return null;
+  };
   const seen = new Set(), entries = [];
   for (const link of [...document.querySelectorAll('a[href]')].slice(0, 4000)) {
     if (entries.length >= 120) break;
@@ -20,7 +44,8 @@
       card?.querySelector('h2,h3,h4')?.textContent, link.textContent];
     const title = choices.map(clean).find((s) => s.length >= 4 && s.length <= 160 && !ignored.test(s));
     if (!title || /^https?:/i.test(title)) continue;
-    seen.add(url.href); entries.push({ title, url: url.href });
+    const coverUrl = coverImage(link) || coverImage(card);
+    seen.add(url.href); entries.push({ title, url: url.href, coverUrl });
   }
   return entries;
 })();

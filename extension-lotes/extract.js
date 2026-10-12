@@ -36,5 +36,23 @@
     .replace(/^Assistir\s+/i, '').slice(0, 160);
   const candidates = [meta('meta[property="og:title"]'), meta('meta[name="twitter:title"]'), document.querySelector('h1')?.textContent || '', document.title];
   const title = candidates.map(clean).find(value => value && !/^(embed|player|redecanais|rede canais|vídeo|video)(\s*[-|].*)?$/i.test(value)) || '';
-  return { version: 1, title, description: meta('meta[property="og:description"]') || meta('meta[name="description"]'), urls: [...urls], sourcePage: location.href };
+
+  const poster = (raw) => {
+    try {
+      if (!raw || String(raw).length > 2048) return null;
+      const url = new URL(raw, location.href);
+      if (url.protocol !== 'https:' || url.username || url.password || url.port) return null;
+      url.hash = '';
+      return url.href;
+    } catch { return null; }
+  };
+  const pageImage = document.querySelector('main article img, article img, main img');
+  const coverUrl = [
+    meta('meta[property="og:image"]'),
+    meta('meta[name="twitter:image"]'),
+    document.querySelector('link[rel="image_src"]')?.href,
+    pageImage?.getAttribute('data-src'), pageImage?.getAttribute('data-original'),
+    pageImage?.currentSrc, pageImage?.getAttribute('src')
+  ].map(poster).find(Boolean) || null;
+  return { version: 1, title, description: meta('meta[property="og:description"]') || meta('meta[name="description"]'), urls: [...urls], coverUrl, sourcePage: location.href };
 })();
