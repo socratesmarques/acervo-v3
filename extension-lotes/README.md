@@ -15,7 +15,7 @@ Esta pasta é uma **segunda extensão** baseada na versão 2.2.4 do importador o
 1. Acesse uma página de listagem de filmes de uma fonte que você possa utilizar.
 2. Clique com o botão direito no fundo da página → **Importar filmes desta página (ACERVO V2)**.
 3. A janela apresenta **até 120 links candidatos**. Revise e desmarque os que não forem filmes.
-4. Selecione uma **categoria**. Na primeira execução, deixe **Publicar ao salvar** desmarcado.
+4. Selecione a **categoria** acima da lista. A importação em lote começa com **Publicar ao salvar** desmarcado (rascunho); marque somente após testar.
 5. Clique **Importar selecionados**, confirme e mantenha a janela aberta até terminar.
 6. Confira salvos, duplicados e falhas; revise os cadastros no painel.
 
@@ -39,3 +39,12 @@ A importação de temporadas, o envio rápido e o menu para adicionar um episód
 2. Importar um dos mesmos links novamente e confirmar detecção de duplicados.
 3. Selecionar um link sem player e observar o erro (nenhum cadastro falso).
 4. Importar 2 episódios de uma temporada e conferir associação/números.
+
+## Correções após o teste inicial
+
+- Não espera mais a aba inteira ficar com status `complete` (imagens e recursos externos podem atrasar). Aguarda o documento estar acessível e diferencia o carregamento do ACERVO da página de origem.
+- Faz tentativas breves de captura quando o player aparece com atraso.
+- Ignora links de ordenação como **Data** e páginas de navegação `browse` na listagem.
+- Coloca a categoria e o estado de publicação acima dos filmes, mantém as seleções manuais e mostra os erros próximos ao progresso.
+- Após o lote, mantém marcados somente os itens com falha para uma nova tentativa; itens salvos ou duplicados não ficam marcados.
+- A V2 continua em uma branch com Pull Request de rascunho. Teste com 2 vídeos, sem publicar, antes de tentar um lote maior.
