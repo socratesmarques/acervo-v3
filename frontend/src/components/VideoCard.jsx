@@ -11,7 +11,7 @@ export default function VideoCard({ video, showProgress = false }) {
       className="video-card group"
       aria-label={`Assistir ${video.title}`}
     >
-      <div className={["movie", "series"].includes(video.contentType) && video.posterVertical ? "thumbnail thumbnail-portrait" : "thumbnail"}>
+      <div className={video.posterVertical ? "thumbnail thumbnail-portrait" : "thumbnail"}>
         <img
           src={video.thumbnail}
           alt=""
