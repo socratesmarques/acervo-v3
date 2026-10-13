@@ -102,7 +102,12 @@ function Dashboard() {
 function VideoList() {
   const [page, setPage] = useState(0),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState("");
+    [notice, setNotice] = useState(""),
+    [busy, setBusy] = useState(""),
+    [selected, setSelected] = useState({});
+  const selectedIds = Object.keys(selected);
+  const pageEligible = (statePlaceholder) => statePlaceholder?.items.filter((v) => v.status !== "processing") || [];
+  const MAX_BULK = 100;
   const state = useData(
     (signal) => api(`/admin/videos?contentType=movie&limit=20&offset=${page * 20}`, { signal }),
     [page],
@@ -117,6 +122,60 @@ function VideoList() {
     const timer = setInterval(state.reload, 5000);
     return () => clearInterval(timer);
   }, [state.data, state.reload]);
+  const eligible = pageEligible(state.data);
+  const allPageSelected = eligible.length > 0 && eligible.every((v) => selected[v.id]);
+  function toggleOne(video, checked) {
+    if (checked && !selected[video.id] && selectedIds.length >= MAX_BULK) {
+      setError("Você pode selecionar no máximo 100 filmes por exclusão.");
+      return;
+    }
+    setError("");
+    setSelected((current) => {
+      const next = { ...current };
+      if (checked) next[video.id] = video.title;
+      else delete next[video.id];
+      return next;
+    });
+  }
+  function togglePage(checked) {
+    const missing = eligible.filter((v) => !selected[v.id]);
+    if (checked && selectedIds.length + missing.length > MAX_BULK) {
+      setError("Limite de 100 filmes por exclusão. Exclua os selecionados antes de continuar.");
+      return;
+    }
+    setError("");
+    setSelected((current) => {
+      const next = { ...current };
+      for (const video of eligible) {
+        if (checked) next[video.id] = video.title;
+        else delete next[video.id];
+      }
+      return next;
+    });
+  }
+  async function deleteSelected() {
+    const ids = Object.keys(selected);
+    if (!ids.length || busy) return;
+    const examples = Object.values(selected).slice(0, 5).join(", ");
+    if (!window.confirm(`Excluir permanentemente ${ids.length} filme(s) e seus arquivos?\n\n${examples}${ids.length > 5 ? " e outros…" : ""}\n\nHistóricos e favoritos desses filmes também serão apagados. Não é possível desfazer.`)) return;
+    setBusy("bulk");
+    setError("");
+    setNotice("");
+    try {
+      const result = await api("/admin/bulk-delete", {
+        method: "POST", body: { contentType: "movie", ids },
+      });
+      setSelected({});
+      setNotice(`${result.deleted} filme(s) excluído(s). A limpeza dos arquivos foi agendada.`);
+      const remaining = Math.max(0, (state.data?.total || 0) - result.deleted);
+      if (page > 0 && page * 20 >= remaining) setPage(Math.max(0, Math.ceil(remaining / 20) - 1));
+      else state.reload();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy("");
+    }
+  }
   async function action(v, type) {
     if (
       type === "delete" &&
@@ -127,6 +186,7 @@ function VideoList() {
       return;
     setBusy(v.id);
     setError("");
+    setNotice("");
     try {
       if (type === "delete") await api(`/videos/${v.id}`, { method: "DELETE" });
       if (type === "retry")
@@ -141,6 +201,13 @@ function VideoList() {
             published: !v.published,
           },
         });
+      if (type === "delete") {
+        setSelected((current) => {
+          const next = { ...current };
+          delete next[v.id];
+          return next;
+        });
+      }
       state.reload();
     } catch (e) {
       setError(e.message);
@@ -166,6 +233,15 @@ function VideoList() {
           {error}
         </p>
       )}
+      {notice && <p role="status" className="muted">{notice}</p>}
+      {state.data && <div className="bulk-toolbar" role="group" aria-label="Exclusão em massa de filmes">
+        <strong>{selectedIds.length} selecionado(s)</strong>
+        <span className="muted">Marque os filmes nesta página ou navegue para selecionar mais (máximo 100). Vídeos em processamento não podem ser selecionados.</span>
+        <button type="button" className="button button-glass" disabled={!selectedIds.length || !!busy}
+          onClick={() => { setSelected({}); setError(""); }}>Limpar seleção</button>
+        <button type="button" className="button danger-bulk" disabled={!selectedIds.length || !!busy}
+          onClick={deleteSelected}>{busy === "bulk" ? "Excluindo…" : `Excluir selecionados (${selectedIds.length})`}</button>
+      </div>}
       {state.error || (!state.data && state.loading) ? (
         <Feedback {...state} />
       ) : (
@@ -175,6 +251,11 @@ function VideoList() {
               <table className="admin-table">
                 <thead>
                   <tr>
+                    <th>
+                      <input type="checkbox" aria-label="Selecionar todos os filmes desta página"
+                        checked={allPageSelected} disabled={!!busy || !eligible.length}
+                        onChange={(e) => togglePage(e.target.checked)} />
+                    </th>
                     <th>Vídeo</th>
                     <th>Status</th>
                     <th>Visualizações</th>
@@ -184,6 +265,11 @@ function VideoList() {
                 <tbody>
                   {state.data.items.map((v) => (
                     <tr key={v.id}>
+                      <td>
+                        <input type="checkbox" aria-label={`Selecionar ${v.title}`}
+                          checked={!!selected[v.id]} disabled={!!busy || v.status === "processing"}
+                          onChange={(e) => toggleOne(v, e.target.checked)} />
+                      </td>
                       <td>
                         <strong>{v.title}</strong>
                         <span>{v.contentType === "series" ? "Série" : "Filme"} · {v.category}{v.sourceType === "external" ? " · Vídeo externo" : ""}</span>
@@ -203,7 +289,7 @@ function VideoList() {
                             <Link to={`/video/${v.id}`}>Assistir</Link>
                           )}
                           <button
-                            disabled={busy === v.id}
+                            disabled={!!busy}
                             onClick={() => action(v, "publish")}
                           >
                             {v.published ? "Despublicar" : "Publicar"}
@@ -219,7 +305,7 @@ function VideoList() {
                           <button
                             className="danger-text"
                             disabled={
-                              busy === v.id || v.status === "processing"
+                              !!busy || v.status === "processing"
                             }
                             onClick={() => action(v, "delete")}
                           >
