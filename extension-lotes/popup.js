@@ -126,6 +126,7 @@ function showResult(result, previous = false) {
   if (season && season.id === result.seasonId && result.nextEpisodeNumber) season.nextEpisodeNumber = result.nextEpisodeNumber;
   updateSeasonNote();
 }
+$('open-links').onclick = () => chrome.windows.create({ url: chrome.runtime.getURL('links.html'), type: 'popup', width: 620, height: 760, focused: true }).catch((error) => status(error.message, true));
 $('connect').onclick = async () => {
   try {
     origin = acervoOrigin($('origin').value.trim());

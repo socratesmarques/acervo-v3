@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Enviar para ACERVO V2 — Lotes (Teste)",
-  "version": "1.1.1",
-  "description": "Importação em lote com capas obtidas automaticamente da página original.",
+  "version": "1.2.0",
+  "description": "Importe filmes individualmente, da página atual ou por uma lista de links com categoria.",
   "permissions": [
     "activeTab",
     "scripting",

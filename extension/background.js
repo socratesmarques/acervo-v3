@@ -12,6 +12,22 @@ async function waitForTab(id) {
     chrome.tabs.get(id).then((tab) => { if (tab.status === 'complete') finish(); }).catch(finish);
   });
 }
+// Na origem, esperar apenas o DOM: anúncios e iframes podem nunca terminar de carregar.
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function waitForDocument(id, timeoutMs = 25000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: id }, func: () => document.readyState
+      });
+      if (['interactive', 'complete'].includes(result?.result)) return;
+    } catch {}
+    await pause(400);
+  }
+  throw new Error('A página demorou para disponibilizar o player.');
+}
+
 async function siteTab(origin, create) {
   const pattern = hostPattern(origin);
   if (!(await chrome.permissions.contains({ origins: [pattern] }))) throw new Error('Clique em Conectar para autorizar apenas o endereço do seu ACERVO.');
@@ -32,9 +48,15 @@ export async function handleMessage(message) {
     if (!allowed) throw new Error('Autorize o site de origem antes de importar.');
     const tab = await chrome.tabs.create({ url: target.href, active: false });
     try {
-      await waitForTab(tab.id);
-      const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
-      return { ok: true, data: result?.result };
+      await waitForDocument(tab.id);
+      let capture;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
+        capture = result?.result;
+        if (capture?.urls?.length) break;
+        if (attempt < 3) await pause(1400);
+      }
+      return { ok: true, data: capture };
     } finally { await chrome.tabs.remove(tab.id).catch(() => {}); }
   }
   const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
@@ -55,7 +77,7 @@ export async function handleMessage(message) {
   } finally { if (message.action === 'save') saving = false; }
 }
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (sender.id !== chrome.runtime.id || sender.url?.split('?')[0] !== chrome.runtime.getURL('popup.html')) return false;
+  if (sender.id !== chrome.runtime.id || !['popup.html', 'links.html'].some((page) => sender.url?.split('?')[0] === chrome.runtime.getURL(page))) return false;
   handleMessage(message).then(sendResponse).catch((error) => sendResponse({ ok: false, message: error.message }));
   return true; // Keep the response channel alive if the popup closes during a save.
 });
