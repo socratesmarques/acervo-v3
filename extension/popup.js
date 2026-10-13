@@ -100,6 +100,7 @@ function showResult(result, previous = false) {
   updateSeasonNote();
 }
 $('open-links').onclick = () => chrome.windows.create({ url: chrome.runtime.getURL('links.html'), type: 'popup', width: 620, height: 760, focused: true }).catch((error) => status(error.message, true));
+$('open-series-links').onclick = () => chrome.windows.create({ url: chrome.runtime.getURL('series-links.html'), type: 'popup', width: 650, height: 760, focused: true }).catch((error) => status(error.message, true));
 $('connect').onclick = async () => {
   try {
     origin = acervoOrigin($('origin').value.trim());
