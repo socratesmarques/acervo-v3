@@ -238,10 +238,11 @@ test('séries: migration, organização, episódios e acesso', async (t) => {
     assert.equal((await request('DELETE', `/api/series/${series}`, undefined, viewer)).statusCode, 403);
     assert.equal((await request('DELETE', `/api/series/${series}`, undefined, null)).statusCode, 401);
     assert.equal((await request('DELETE', `/api/series/${series}`, undefined, admin, { 'x-csrf-token': 'wrong' })).statusCode, 403);
-    await db.query("UPDATE videos SET status='processing' WHERE id=$1", [ep1]);
+    // Only uploaded media can be processing; external players must stay ready.
+    await db.query("UPDATE videos SET status='processing' WHERE id=$1", [uploaded]);
     assert.equal((await request('DELETE', `/api/series/${series}`)).statusCode, 409);
     assert.equal((await request('GET', `/api/videos/${series}`)).statusCode, 200);
-    await db.query("UPDATE videos SET status='ready' WHERE id=$1", [ep1]);
+    await db.query("UPDATE videos SET status='ready' WHERE id=$1", [uploaded]);
     const result = await request('DELETE', `/api/series/${series}`);
     assert.equal(result.statusCode, 200, result.body);
     assert.equal(result.json().seasonsDeleted, 2);

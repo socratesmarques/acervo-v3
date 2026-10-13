@@ -22,9 +22,9 @@ function ProviderForm({ provider, onSaved }) {
     <p className="muted">{provider.videoCount} vídeo(s) vinculado(s)</p>
     <form onSubmit={save} className="form-stack">
       <label>Domínio de {provider.name}
-        <input type="url" required maxLength={300} value={baseUrl} onChange={e => setBaseUrl(e.target.value)} disabled={busy} />
+        <input type="url" required maxLength={300} value={baseUrl} onChange={e => setBaseUrl(e.target.value)} disabled={busy || provider.kind === "blogger"} />
       </label>
-      <p className="form-hint">Somente https://dominio. Os caminhos e identificadores dos vídeos serão preservados.</p>
+      <p className="form-hint">{provider.kind === "blogger" ? "Domínio oficial fixo. O token completo do vídeo é preservado e não é enviado a outro provedor." : "Somente https://dominio. Os caminhos e identificadores dos vídeos serão preservados."}</p>
       {error && <p role="alert" className="form-error">{error}</p>}
       <button className="button button-accent" disabled={busy || baseUrl === provider.baseUrl}>{busy ? "Salvando…" : "Salvar domínio"}</button>
     </form>

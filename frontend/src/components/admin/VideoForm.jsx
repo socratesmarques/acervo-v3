@@ -94,7 +94,7 @@ export default function VideoForm({ video, categories, maxUploadMB, episodeConte
             {sourceType === "external" && <>
               <label>URL de incorporação
                 <input type="url" name="externalUrl" required maxLength={4096} defaultValue={video?.externalUrl || ""} placeholder="https://www.youtube.com/embed/ID_DO_VIDEO" />
-                <span className="form-hint">Cole somente a URL HTTPS do src do iframe. Gerencie os domínios em Admin → Provedores. Links de domínios anteriores cadastrados usam o endereço atual automaticamente.</span>
+                <span className="form-hint">Cole somente a URL HTTPS do src do iframe. Para Blogger Video, inclua todo o endereço https://www.blogger.com/video.g?token=… sem cortar o token. Gerencie os demais domínios em Admin → Provedores.</span>
               </label>
               <label>Duração em segundos (opcional)
                 <input type="number" name="duration" min="0" max="43200" step="1" defaultValue={video?.duration || ""} />

@@ -276,7 +276,8 @@ test("fluxo completo de API, permissões, processamento e persistência", async 
   await t.test("provedores: troca central, aliases, CSP dinâmica, permissões e reversão", async () => {
     const catalog = await request("GET", "/api/admin/providers");
     assert.equal(catalog.statusCode, 200, catalog.body);
-    assert.equal(catalog.json().items.length, 4);
+    assert.deepEqual(catalog.json().items.map(p => p.id).sort(),
+      ["blogger", "redecanais", "vimeo", "youtube", "youtube-private"]);
     let provider = catalog.json().items.find(p => p.id === "redecanais");
     assert.equal((await request("GET", "/api/admin/providers", undefined, viewerSession)).statusCode, 403);
     assert.equal((await request("PUT", "/api/admin/providers/redecanais", { baseUrl: "https://videos.example", version: provider.version }, viewerSession)).statusCode, 403);

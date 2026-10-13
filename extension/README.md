@@ -1,11 +1,19 @@
-# Enviar para ACERVO 2.2.4 — envio rápido
+# Enviar para ACERVO 2.2.5 — envio rápido
+
+## Blogger Video (2.2.5)
+
+Reconhece o iframe `https://www.blogger.com/video.g?token=...` como
+**Blogger Video**, preservando a URL completa. Também reconhece `data-src`
+e HTML de incorporação copiado na página. Atualize o servidor com a migration
+008 e recarregue esta extensão. Veja [uso, atualização e testes](../docs/blogger-video.md).
+O player original é incorporado, sem baixar vídeos ou contornar restrições.
 
 Captura o nome e o player da página aberta, permite escolher o destino uma vez e salva diretamente no ACERVO. Depois da configuração, o fluxo normal tem **dois cliques**: abrir a extensão e clicar em Salvar/Publicar. Abrir a página de origem e preencher um título ausente continuam sendo passos necessários quando o site não oferece esses dados.
 
 ## Atualizar a extensão já instalada
 
 1. Atualize os arquivos da extensão na pasta já carregada no Chrome/Edge. Se usa Git, execute `git pull`; se usa ZIP, substitua os arquivos da pasta `extension`.
-2. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.2.4**.
+2. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.2.5**.
 3. Para instalar pela primeira vez, use **Carregar sem compactação** e selecione a pasta `extension` que contém `manifest.json`. Fixe o ícone na barra do navegador.
 
 Não é necessário remover a extensão. Manter a mesma pasta/instalação preserva o endereço salvo.
@@ -82,7 +90,11 @@ O envio é coordenado pelo service worker da extensão e o último resultado fic
 
 ## Atualizar a extensão no Windows
 
-Para esta melhoria, não é necessário reiniciar o Docker nem gerar outro APK. Depois de atualizar os arquivos do projeto com Git ou ZIP, abra `chrome://extensions` ou `edge://extensions` e clique em **Recarregar** no cartão **Enviar para ACERVO**.
+Para o suporte ao Blogger, atualize também o servidor e aplique a migration 008,
+conforme o [guia de atualização](../docs/blogger-video.md). Depois abra
+`chrome://extensions` ou `edge://extensions` e clique em **Recarregar** no cartão
+**Enviar para ACERVO**. O APK que carrega o mesmo site remoto não precisa ser
+recompilado apenas por esta alteração.
 
 ## Testes
 

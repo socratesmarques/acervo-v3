@@ -3,7 +3,7 @@ import { query, transaction } from "../db.js";
 import { admin, fail, uuid } from "../security.js";
 import { providerOrigin, playbackUrl } from "../external.js";
 import { accessibleVideo } from "../catalog.js";
-const providerId = z.enum(["youtube", "youtube-private", "vimeo", "redecanais"]);
+const providerId = z.enum(["youtube", "youtube-private", "vimeo", "redecanais", "blogger"]);
 const changes = z.object({ baseUrl: providerOrigin, version: z.number().int().positive() }).strict();
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"})[ch]);
 export default async function providerRoutes(app) {
@@ -16,6 +16,8 @@ export default async function providerRoutes(app) {
   }));
   app.put("/api/admin/providers/:id", { preHandler: admin }, async (req) => {
     const id = providerId.parse(req.params.id), data = changes.parse(req.body);
+    if (id === "blogger" && data.baseUrl !== "https://www.blogger.com")
+      fail(400, "O domínio do Blogger Video é fixo para não enviar tokens a outros servidores.");
     await transaction(async db => {
       const { rows: [current] } = await db.query("SELECT * FROM providers WHERE id=$1 FOR UPDATE", [id]);
       if (!current) fail(404, "Provedor não encontrado.");

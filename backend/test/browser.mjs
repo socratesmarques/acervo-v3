@@ -246,6 +246,37 @@ try {
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: path.join(root, "backend/test-results/external-player-mobile.png"), fullPage: true });
   const externalWatchUrl = page.url();
+  // Blogger: actual React form -> API/migration -> authenticated wrapper -> sandboxed
+  // iframe with a controlled video fixture. No request to Google's live servers.
+  const bloggerUrl = "https://www.blogger.com/video.g?token=fixture%2Btoken%2Fopaque%3D&extra=preserved";
+  await page.route("https://www.blogger.com/video.g?**", route => route.fulfill({
+    contentType: "text/html; charset=utf-8",
+    body: '<h1>Blogger Video fixture</h1><video controls src="https://www.blogger.com/fixture.mp4"></video><button onclick="document.querySelector(\'video\').play()">Reproduzir fixture Blogger</button>'
+  }));
+  await page.route("https://www.blogger.com/fixture.mp4", route => route.fulfill({
+    contentType: "video/mp4", path: path.join(root, "backend/test/fixtures/flower.mp4")
+  }));
+  await page.goto(origin + "/admin/upload");
+  await page.getByLabel("Origem do vídeo").selectOption("external");
+  await page.getByLabel("Título", { exact: true }).fill("Blogger incorporado");
+  await page.getByLabel("URL de incorporação").fill(bloggerUrl);
+  await page.locator("select[name=categoryId]").selectOption({ label: "Viagens" });
+  await page.getByRole("button", { name: "Cadastrar vídeo externo" }).click();
+  await page.waitForURL("**/admin/videos");
+  await page.getByRole("row").filter({ hasText: "Blogger incorporado" }).getByRole("link", { name: "Assistir", exact: true }).click();
+  await page.getByText("Provedor: Blogger Video", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Carregar vídeo externo" }).click();
+  const bloggerFrame = page.frameLocator("iframe").frameLocator("iframe");
+  await bloggerFrame.getByRole("heading", { name: "Blogger Video fixture" }).waitFor();
+  assert.equal(await page.frameLocator("iframe").locator("iframe").getAttribute("src"), bloggerUrl);
+  await bloggerFrame.getByRole("button", { name: "Reproduzir fixture Blogger" }).click();
+  await bloggerFrame.locator("video").evaluate(video => new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Blogger fixture did not play")), 10000);
+    const check = () => { if (video.currentTime > 0) { clearTimeout(timeout); video.removeEventListener("timeupdate", check); resolve(); } };
+    video.addEventListener("timeupdate", check); check();
+  }));
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: path.join(root, "backend/test-results/blogger-player-mobile.png"), fullPage: true });
   await page.goto(origin + "/admin/providers");
   await page.getByRole("heading", { name: "Provedores", exact: true }).waitFor();
   const youtubeProvider = page.locator("article").filter({ has: page.getByRole("heading", {name: "YouTube", exact: true}) });
@@ -373,6 +404,18 @@ try {
   const encoded = await fixture.evaluate(extraction);
   assert.equal(encoded.title, "");
   assert.deepEqual(encoded.urls, ["https://catalog.example/player3/server.php?vid=ABC&server=B"]);
+  // Run both extractors against real DOM parsing, including pasted iframe HTML.
+  for (const folder of ["extension", "extension-lotes"]) {
+    const script = await readFile(path.join(root, folder, "extract.js"), "utf8");
+    await fixture.route("https://catalog.example/blogger", route => route.fulfill({
+      contentType: "text/html",
+      body: '<title>Blogger fixture</title><iframe data-src="' + bloggerUrl.replaceAll("&", "&amp;") + '"></iframe><textarea>&lt;iframe src="' + bloggerUrl.replaceAll("&", "&amp;") + '"&gt;&lt;/iframe&gt;</textarea>'
+    }));
+    await fixture.goto("https://catalog.example/blogger");
+    const detected = await fixture.evaluate(script);
+    assert.deepEqual(detected.urls, [bloggerUrl]);
+    assert.equal(detected.players[0].name, "Blogger Video");
+  }
   await fixture.close();
   // Real popup and same-origin bridge/API; browser extension APIs are simulated.
   const { requestOnSite } = await import("../../extension/bridge.js");
@@ -467,7 +510,7 @@ try {
   await popup.close();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: login, categoria, upload, HLS playback, favorito, histórico e retomada, busca, admin, vídeo externo e mudança de domínio no painel com CSP dinâmica e iframe simulado, temporadas e episódios (criação, vínculo, seleção e próximo episódio), layout 390px e alteração de senha. Extensão rápida: destino lembrado, envio direto, duplicados, próximo número, categoria e sessão expirada. Sem erros de JavaScript.",
+    "PASS: login, categoria, upload, HLS playback, favorito, histórico e retomada, busca, admin, vídeo externo e mudança de domínio no painel com CSP dinâmica e iframe simulado; Blogger Video com URL completa, reprodução de fixture no iframe e detecção nas duas extensões; temporadas e episódios (criação, vínculo, seleção e próximo episódio), layout 390px e alteração de senha. Extensão rápida: destino lembrado, envio direto, duplicados, próximo número, categoria e sessão expirada. Sem erros de JavaScript.",
   );
 } catch (error) {
   await page
