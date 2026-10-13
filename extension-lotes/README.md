@@ -8,7 +8,7 @@ A importação avança de página em página, exibindo filmes salvos, duplicados
 
 Os links candidatos são identificados de forma heurística, sem garantia de que todos sejam filmes. Faça um teste com uma listagem pequena antes de importar dezenas de páginas. A extensão solicita permissão para os domínios fornecidos; não ultrapassa login, DRM, proteções de iframe ou bloqueios dos servidores. Capas externas exigem permissão do próprio domínio da imagem e não impedem o cadastro do filme.
 
-Testes automatizados: `node --test extension/test-links.mjs extension/test-movie-pages.mjs` a partir da raiz do repositório.
+Testes automatizados: `node --test extension/test-links.mjs extension/test-movie-pages.mjs extension/test-links-flow.mjs` a partir da raiz do repositório.
 
 ## Blogger Video (1.1.1)
 
