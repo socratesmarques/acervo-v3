@@ -47,8 +47,9 @@ export function normalizeSeriesEpisodes(entries, maxEpisodes = 500) {
   const seen = new Set(), episodes = [];
   for (const item of valid) {
     let number = item.seasonNumber;
+    if (number === null && !item.seasonLabel) number = 1;
     if (number === null) {
-      const key = item.seasonLabel || 'Temporada 1';
+      const key = item.seasonLabel;
       if (!labels.has(key)) {
         while (explicit.has(next) || [...labels.values()].includes(next)) next++;
         if (next > 1000) break;
