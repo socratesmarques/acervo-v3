@@ -18,6 +18,53 @@ export async function requestOnSite({ origin, operation, body }) {
         throw new Error('Resposta inesperada. Confira se o endereço abre seu ACERVO e se o servidor está atualizado.');
       return { ok: true, data };
     }
+    if (operation === 'uploadCover') {
+      if (!/^[a-f0-9-]{36}$/i.test(String(body?.videoId || ''))) throw new Error('ID do filme inválido.');
+      if (!['image/jpeg','image/png','image/webp'].includes(body?.mime) ||
+          typeof body?.base64 !== 'string' || body.base64.length > 6_000_000)
+        throw new Error('Imagem inválida ou grande demais.');
+      const auth = await request('/api/auth/me');
+      if (auth.user?.role !== 'admin' || typeof auth.csrf !== 'string')
+        throw new Error('Entre como administrador no ACERVO.');
+      const raw = atob(body.base64);
+      const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+      const form = new FormData();
+      form.append('thumbnail', new Blob([bytes], { type: body.mime }), 'cover.jpg');
+      const data = await request('/api/videos/' + body.videoId + '/thumbnail?ifMissing=1', {
+        method: 'POST', headers: { 'X-CSRF-Token': auth.csrf },
+        body: form, signal: AbortSignal.timeout(30000)
+      });
+      window.dispatchEvent(new Event('catalog-change'));
+      return { ok: true, data };
+    }
+
+    if (operation === 'saveSeries' || operation === 'ensureSeason') {
+      const auth = await request('/api/auth/me');
+      if (auth.user?.role !== 'admin' || typeof auth.csrf !== 'string')
+        throw new Error('Entre como administrador no ACERVO.');
+      const headers = { 'Content-Type': 'application/json', 'X-CSRF-Token': auth.csrf };
+      if (operation === 'saveSeries') {
+        const data = await request('/api/admin/quick-series', {
+          method: 'POST', headers, body: JSON.stringify(body)
+        });
+        if (!data.id || typeof data.duplicate !== 'boolean')
+          throw new Error('O cadastro da série não foi confirmado.');
+        window.dispatchEvent(new Event('catalog-change'));
+        return { ok: true, data };
+      }
+      const seriesId = String(body?.seriesId || '');
+      const number = Number(body?.number);
+      if (!/^[0-9a-f-]{36}$/i.test(seriesId) || !Number.isInteger(number) || number < 1 || number > 1000)
+        throw new Error('Série ou temporada inválida.');
+      const current = await request('/api/series/' + seriesId + '/seasons');
+      const existing = current.items?.find((s) => s.number === number);
+      if (existing) return { ok: true, data: { id: existing.id, number, duplicate: true } };
+      const data = await request('/api/series/' + seriesId + '/seasons', {
+        method: 'POST', headers, body: JSON.stringify({ number, title: String(body.title || '').slice(0, 160) })
+      });
+      if (!data.id) throw new Error('A temporada não foi confirmada.');
+      return { ok: true, data: { id: data.id, number, duplicate: false } };
+    }
     if (operation !== 'save') throw new Error('Operação inválida.');
     const auth = await request('/api/auth/me');
     if (auth.user?.role !== 'admin' || typeof auth.csrf !== 'string') throw new Error('Entre como administrador no ACERVO.');
