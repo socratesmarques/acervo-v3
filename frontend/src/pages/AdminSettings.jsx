@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
-import Feedback from "../components/Feedback";
 
 export default function AdminSettings() {
   const [showReleaseYear, setShowReleaseYear] = useState(true);
@@ -15,7 +14,7 @@ export default function AdminSettings() {
     return () => { alive = false; };
   }, []);
   if (loading) return <p role="status">Carregando preferências…</p>;
-  if (error && !notice) return <Feedback error={new Error(error)} onRetry={() => window.location.reload()} />;
+  if (error && !notice) return <p role="alert">{error} <button type="button" onClick={() => window.location.reload()}>Tentar novamente</button></p>;
   async function save(event) {
     event.preventDefault();
     setBusy(true); setNotice(""); setError("");
