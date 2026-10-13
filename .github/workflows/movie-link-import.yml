@@ -1,0 +1,28 @@
+name: Importação de páginas de filmes
+on:
+  push:
+    branches:
+      - feature/importar-lista-paginas-filmes
+  pull_request:
+    paths:
+      - 'extension/**'
+      - 'extension-lotes/**'
+      - '.github/workflows/movie-link-import.yml'
+jobs:
+  testes-extensao:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar sintaxe dos scripts
+        run: |
+          node --check extension/background.js
+          node --check extension/links.js
+          node --check extension-lotes/background.js
+          node --check extension-lotes/links.js
+          node --check extension/link-import.mjs
+          node --check extension-lotes/link-import.mjs
+      - name: Testar extração e fluxo simulado das páginas
+        run: node --test extension/test-links.mjs extension/test-movie-pages.mjs extension/test-links-flow.mjs

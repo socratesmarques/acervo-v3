@@ -1,21 +1,14 @@
 # Enviar para ACERVO V2 — Importador em lotes (teste)
 
-## Novo: importar uma lista de links (uma categoria para todos)
+## Lista de páginas de filmes (catálogos ou filmes individuais)
 
-Abra a extensão e clique em **Importar lista de links**. Uma janela independente será aberta para manter o progresso visível. Com o ACERVO aberto e autenticado como administrador:
+Abra a extensão e selecione **Importar lista de links**. Cole até **50 endereços HTTPS**, um por linha. Cada endereço pode ser uma página com vários cartões de filmes (como `/filmes/pagina-1`) ou uma página individual (como `/filme/xyz`). Em página de catálogo, a extensão reutiliza o mesmo detector `movies.js` da opção **Importar filmes desta página**; em seguida, abre cada filme encontrado e captura o player com `extract.js`, gravando pelo endpoint já existente. Página individual com player é cadastrada diretamente.
 
-1. Cole até **50 endereços HTTPS**, um por linha. Exemplo:
-   `https://exemplo.com/filme-a`.
-   Também é aceito `Nome do filme | https://exemplo.com/filme-b` para indicar um título quando a página não informa um.
-2. Escolha a **categoria** que será aplicada a todos os novos filmes.
-3. Por segurança, **Publicar imediatamente** começa desmarcado: os filmes serão rascunhos. Ative somente se desejar.
-4. Clique em **Importar lista**, conceda acesso aos domínios dos links e mantenha a janela aberta. A extensão abre cada página em segundo plano, identifica um player compatível, envia um filme de cada vez e fecha a aba temporária.
-5. Veja quantos foram salvos, quantos já existiam e quais falharam. **Tentar novamente apenas as falhas** não reenvia os sucessos.
+A importação avança de página em página, exibindo filmes salvos, duplicados e falhas. Uma falha não interrompe o restante da lista. **Tentar novamente apenas as falhas** reprocessa somente URLs sem sucesso. A categoria escolhida se aplica a todos os filmes e o padrão é **rascunho**.
 
-Links repetidos na lista são ignorados. Um player já existente no Acervo não é movido de categoria nem publicado novamente. Sem título ou player compatível, o link é marcado como falha para revisão; não cria um cadastro incorreto. A função não baixa vídeos, não contorna bloqueios e não adiciona capa automaticamente; caso necessário, ajuste as capas no painel. A publicação e os direitos de uso do conteúdo são de sua responsabilidade.
+Os links candidatos são identificados de forma heurística, sem garantia de que todos sejam filmes. Faça um teste com uma listagem pequena antes de importar dezenas de páginas. A extensão solicita permissão para os domínios fornecidos; não ultrapassa login, DRM, proteções de iframe ou bloqueios dos servidores. Capas externas exigem permissão do próprio domínio da imagem e não impedem o cadastro do filme.
 
-Para atualizar, dê `git pull` no computador que tem a pasta da extensão e clique em **Recarregar** em `chrome://extensions` ou `edge://extensions`. **Não é necessário reiniciar o Motorola ou recompilar o site para esta alteração.**
-
+Testes automatizados: `node --test extension/test-links.mjs extension/test-movie-pages.mjs extension/test-links-flow.mjs` a partir da raiz do repositório.
 
 ## Blogger Video (1.1.1)
 
@@ -25,7 +18,7 @@ e HTML de incorporação copiado na página. Atualize o servidor com a migration
 008 e recarregue esta extensão. Veja [uso, atualização e testes](../docs/blogger-video.md).
 O player original é incorporado, sem baixar vídeos ou contornar restrições.
 
-Esta pasta é uma **segunda extensão** baseada na versão 2.2.4 do importador original. A versão oficial continua na pasta `extension/`, sem alterações. Chrome/Edge tratará a nova extensão como independente, com armazenamento e permissões separados.
+Esta pasta é uma **segunda extensão** baseada na versão 2.2.4 do importador original. A versão oficial continua na pasta `extension/`, e também recebeu a importação de listas de páginas. Chrome/Edge tratará a nova extensão como independente, com armazenamento e permissões separados.
 
 ## Instalação lado a lado
 
@@ -44,7 +37,7 @@ Esta pasta é uma **segunda extensão** baseada na versão 2.2.4 do importador o
 5. Clique **Importar selecionados**, confirme e mantenha a janela aberta até terminar.
 6. Confira salvos, duplicados e falhas; revise os cadastros no painel.
 
-A extensão abre somente os links selecionados, captura o player quando reconhecido e usa a API existente. O backend exige player de provedor cadastrado e previne duplicados. Não adiciona automaticamente capas.
+A extensão abre somente os links selecionados, captura o player quando reconhecido e usa a API existente. O backend exige player de provedor cadastrado e previne duplicados. Capas são tentadas automaticamente quando o domínio da imagem já está autorizado.
 
 ## Outras funções
 
@@ -52,7 +45,7 @@ A importação de temporadas, o envio rápido e o menu para adicionar um episód
 
 ## Limitações
 
-- Não percorre páginas adicionais nem catálogos inteiros automaticamente.
+- Percorre somente as páginas inseridas na lista; não encontra automaticamente links de paginação nem catálogos inteiros.
 - Não baixa vídeos, não remove DRM e não contorna bloqueios ou login.
 - O reconhecimento de links é heurístico: exige revisão humana e permissão de uso do conteúdo.
 - Usa envios sequenciais para respeitar o limite da API. Não feche a janela durante o lote.
