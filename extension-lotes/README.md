@@ -17,7 +17,7 @@ Links repetidos na lista são ignorados. Um player já existente no Acervo não 
 Para atualizar, dê `git pull` no computador que tem a pasta da extensão e clique em **Recarregar** em `chrome://extensions` ou `edge://extensions`. **Não é necessário reiniciar o Motorola ou recompilar o site para esta alteração.**
 
 
-## Blogger Video (1.2.0)
+## Blogger Video (1.1.1)
 
 Reconhece o iframe `https://www.blogger.com/video.g?token=...` como
 **Blogger Video**, preservando a URL completa. Também reconhece `data-src`

@@ -30,7 +30,7 @@ Captura o nome e o player da página aberta, permite escolher o destino uma vez 
 ## Atualizar a extensão já instalada
 
 1. Atualize os arquivos da extensão na pasta já carregada no Chrome/Edge. Se usa Git, execute `git pull`; se usa ZIP, substitua os arquivos da pasta `extension`.
-2. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.2.5**.
+2. Abra `chrome://extensions` (Chrome) ou `edge://extensions` (Edge), ative o modo desenvolvedor e clique em **Recarregar** no cartão **Enviar para ACERVO**. Confirme a versão **2.3.0**.
 3. Para instalar pela primeira vez, use **Carregar sem compactação** e selecione a pasta `extension` que contém `manifest.json`. Fixe o ícone na barra do navegador.
 
 Não é necessário remover a extensão. Manter a mesma pasta/instalação preserva o endereço salvo.
