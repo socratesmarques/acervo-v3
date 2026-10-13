@@ -1,3 +1,13 @@
+## Lista de páginas de filmes (catálogos ou filmes individuais)
+
+Abra a extensão e selecione **Importar lista de links**. Cole até **50 endereços HTTPS**, um por linha. Cada endereço pode ser uma página com vários cartões de filmes (como `/filmes/pagina-1`) ou uma página individual (como `/filme/xyz`). Em página de catálogo, a extensão reutiliza o mesmo detector `movies.js` da opção **Importar filmes desta página**; em seguida, abre cada filme encontrado e captura o player com `extract.js`, gravando pelo endpoint já existente. Página individual com player é cadastrada diretamente.
+
+A importação avança de página em página, exibindo filmes salvos, duplicados e falhas. Uma falha não interrompe o restante da lista. **Tentar novamente apenas as falhas** reprocessa somente URLs sem sucesso. A categoria escolhida se aplica a todos os filmes e o padrão é **rascunho**.
+
+Os links candidatos são identificados de forma heurística, sem garantia de que todos sejam filmes. Faça um teste com uma listagem pequena antes de importar dezenas de páginas. A extensão solicita permissão para os domínios fornecidos; não ultrapassa login, DRM, proteções de iframe ou bloqueios dos servidores. Capas externas exigem permissão do próprio domínio da imagem e não impedem o cadastro do filme.
+
+Testes automatizados: `node --test extension/test-links.mjs extension/test-movie-pages.mjs` a partir da raiz do repositório.
+
 # Enviar para ACERVO V2 — Importador em lotes (teste)
 
 ## Novo: importar uma lista de links (uma categoria para todos)
