@@ -9,12 +9,14 @@ import Player from "../components/Player";
 import FavoriteButton from "../components/FavoriteButton";
 import VideoRow from "../components/VideoRow";
 import SeriesBrowser from "../components/SeriesBrowser";
+import { useDisplaySettings } from "../context/DisplaySettings";
 
 function Playback({ video }) {
   if (video.status !== "ready") return <div className="empty-state"><h2>Vídeo em processamento</h2><p>Acompanhe o status no painel administrativo.</p></div>;
   return video.sourceType === "external" ? <ExternalPlayer key={`${video.id}-${video.externalUrl}`} video={video} /> : <Player key={video.id} video={video} />;
 }
 export default function Video() {
+  const { showReleaseYear } = useDisplaySettings();
   const { id } = useParams();
   const state = useData(async (signal) => {
     const video = await api(`/videos/${id}`, { signal });
@@ -46,7 +48,7 @@ export default function Video() {
         </div>
       </div>
       <dl>
-        {video.releaseYear && <div><dt>Ano de exibição</dt><dd>{video.releaseYear}</dd></div>}
+        {showReleaseYear && video.releaseYear && <div><dt>Ano de exibição</dt><dd>{video.releaseYear}</dd></div>}
         <div><dt>Publicado em</dt><dd>{formatDate(video.publishedAt)}</dd></div>
         <div><dt>{isSeries ? "Episódios disponíveis" : "Duração"}</dt><dd>{isSeries ? episodes.length : video.duration ? formatDuration(video.duration) : "Não informada"}</dd></div>
         {!isSeries && <div><dt>Visualizações</dt><dd>{video.views}</dd></div>}

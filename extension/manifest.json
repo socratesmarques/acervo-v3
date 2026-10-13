@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Enviar para ACERVO",
-  "version": "2.3.0",
-  "description": "Importe filmes individualmente, da página atual ou por uma lista de links com categoria.",
+  "version": "2.4.0",
+  "description": "Importe filmes, séries e episódios por página ou por listas de links.",
   "permissions": [
     "activeTab",
     "scripting",

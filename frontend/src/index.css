@@ -1298,6 +1298,7 @@ progress {
 .admin-series-card { min-width: 0; background: #ffffff04; border-radius: 14px; overflow: hidden; }
 .admin-series-cover { display: block; position: relative; aspect-ratio: 16 / 9; background: #171b21; }
 .admin-series-cover img { width: 100%; height: 100%; object-fit: cover; }
+.admin-series-cover.portrait { aspect-ratio: 2 / 3; max-width: 320px; }
 .admin-series-cover > svg { position: absolute; right: 12px; bottom: 12px; filter: drop-shadow(0 1px 4px #000); }
 .admin-series-info { padding: 1.1rem; }
 .admin-series-info h2 { font-size: 1.3rem; overflow-wrap: anywhere; }

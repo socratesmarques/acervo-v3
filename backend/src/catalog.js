@@ -4,6 +4,7 @@ import { fail } from "./security.js";
 export const selectVideo = `SELECT v.*,c.name AS category,p.base_url AS provider_origin,p.kind AS provider_kind,p.name AS provider_name,
  s.series_id,s.number AS season_number,series.title AS series_title,
  series.custom_thumbnail AS series_custom_thumbnail,series.episode_cover_default AS series_episode_cover_default,
+ series.poster_vertical AS series_poster_vertical,
  series.updated_at AS series_updated_at,series.status AS series_status,
  COALESCE(h.position,0) AS position,COALESCE(h.completed,false) AS completed,
  (f.video_id IS NOT NULL) AS favorite FROM videos v
@@ -31,7 +32,7 @@ export function dto(v) {
     title: v.title,
     description: v.description,
     releaseYear: v.release_year,
-    posterVertical: !!v.poster_vertical,
+    posterVertical: !!v.poster_vertical || (v.content_type === "episode" && !v.custom_thumbnail && !!v.series_episode_cover_default && !!v.series_custom_thumbnail && !!v.series_poster_vertical),
     episodeCoverDefault: !!v.episode_cover_default,
     categoryId: v.category_id,
     category: v.category,

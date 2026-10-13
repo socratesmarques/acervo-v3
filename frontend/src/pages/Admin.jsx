@@ -22,6 +22,7 @@ import { api } from "../services/api";
 import VideoForm from "../components/admin/VideoForm";
 import { NewEpisode } from "../components/admin/SeriesManager";
 import SeriesList, { NewSeries, EditSeries } from "./AdminSeries";
+import AdminSettings from "./AdminSettings";
 import ImportVideo from "./ImportVideo";
 import Providers from "./Providers";
 import Feedback from "../components/Feedback";
@@ -483,6 +484,7 @@ export default function Admin() {
           ["/categories", "Categorias", Folder],
           ["/users", "Pessoas", Users],
           ["/providers", "Provedores", Globe],
+          ["/settings", "Configurações", Globe],
         ].map(([path, label, Icon]) => (
           <NavLink end={path === ""} key={path} to={`/admin${path}`}>
             <Icon size={18} />
@@ -504,6 +506,7 @@ export default function Admin() {
           <Route path="users" element={<UserList />} />
           <Route path="import" element={<ImportVideo />} />
           <Route path="providers" element={<Providers />} />
+          <Route path="settings" element={<AdminSettings />} />
           <Route
             path="*"
             element={<p>Página administrativa não encontrada.</p>}

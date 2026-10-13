@@ -1,15 +1,17 @@
 import { Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDuration } from "../utils/format";
+import { useDisplaySettings } from "../context/DisplaySettings";
 
 export default function VideoCard({ video, showProgress = false }) {
+  const { showReleaseYear } = useDisplaySettings();
   return (
     <Link
       to={`/video/${video.id}`}
       className="video-card group"
       aria-label={`Assistir ${video.title}`}
     >
-      <div className={video.contentType === "movie" && video.posterVertical ? "thumbnail thumbnail-portrait" : "thumbnail"}>
+      <div className={video.posterVertical ? "thumbnail thumbnail-portrait" : "thumbnail"}>
         <img
           src={video.thumbnail}
           alt=""
@@ -40,7 +42,7 @@ export default function VideoCard({ video, showProgress = false }) {
           {video.seriesId ? `${video.seriesTitle} · T${video.seasonNumber} E${video.episodeNumber}` : `${video.contentType === "series" ? "Série" : "Filme"} · ${video.category}`}
           {showProgress
             ? ` · ${video.progress}% assistido`
-            : ` · ${video.releaseYear ?? new Date(video.publishedAt).getFullYear()}`}
+            : showReleaseYear ? ` · ${video.releaseYear ?? new Date(video.publishedAt).getFullYear()}` : ""}
         </p>
       </div>
     </Link>

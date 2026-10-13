@@ -1,6 +1,57 @@
 import { acervoOrigin, hostPattern } from './shared.js';
 import { requestOnSite } from './bridge.js';
 let saving = false;
+function photoLink(value) {
+  const url = new URL(value);
+  if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+      url.href.length > 2048 ||
+      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(url.hostname) ||
+      /(?:^|\.)(?:localhost|local|internal|lan|test|invalid)$/.test(url.hostname))
+    throw new Error('Endereço da capa não permitido.');
+  return url;
+}
+async function getCoverData(value) {
+  const url = photoLink(value);
+  if (!(await chrome.permissions.contains({ origins: [url.origin + '/*'] })))
+    throw new Error('Permissão para o domínio da capa não concedida.');
+  let response;
+  try {
+    response = await fetch(url.href, {
+      credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(12000)
+    });
+  } catch { throw new Error('Não consegui acessar a imagem da capa.'); }
+  if (!response.ok) throw new Error('O servidor da imagem recusou o download.');
+  const mime = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  if (!['image/jpeg','image/png','image/webp'].includes(mime))
+    throw new Error('O arquivo da capa não é uma imagem JPG, PNG ou WebP.');
+  const maximum = 4 * 1024 * 1024;
+  if (Number(response.headers.get('content-length') || 0) > maximum || !response.body)
+    throw new Error('Capa grande demais ou sem conteúdo.');
+  const reader = response.body.getReader(), parts = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > maximum) {
+        await reader.cancel().catch(() => {});
+        throw new Error('Capa maior que 4 MB.');
+      }
+      parts.push(value);
+    }
+  } catch (error) { throw error; }
+  if (size < 100) throw new Error('Imagem da capa vazia.');
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const part of parts) { bytes.set(part, offset); offset += part.length; }
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 32768)
+    binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+  return { mime, base64: btoa(binary) };
+}
+
+
 async function waitForTab(id) {
   const initial = await chrome.tabs.get(id);
   if (initial.status === 'complete') return;
@@ -69,9 +120,38 @@ async function scanMoviePage(url) {
   }
 }
 
+
+async function scanSeriesPage(raw) {
+  const target = new URL(raw);
+  if (target.protocol !== 'https:' || target.username || target.password || target.href.length > 2048)
+    throw new Error('URL de série inválida.');
+  const pattern = `https://${target.hostname}/*`;
+  if (!(await chrome.permissions.contains({ origins: [pattern] })))
+    throw new Error('Autorize o domínio da série antes de importar.');
+  const tab = await chrome.tabs.create({ url: target.href, active: false });
+  try {
+    await waitForDocument(tab.id, 25000);
+    const [meta] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
+    let episodes = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const [response] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['season.js'] });
+      episodes = Array.isArray(response?.result) ? response.result : [];
+      if (episodes.length) break;
+      if (attempt < 2) await pause(1200);
+    }
+    if (episodes.length) return { kind: 'series', page: meta?.result || {}, episodes };
+    // A mesma heurística de cartões usada para importar filmes de listagens.
+    const [listing] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['movies.js'] });
+    return { kind: 'listing', entries: listing?.result || [] };
+  } finally { await chrome.tabs.remove(tab.id).catch(() => {}); }
+}
+
 export async function handleMessage(message) {
   const origin = acervoOrigin(message.origin);
-  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage', 'scanMoviePage'].includes(message.action)) throw new Error('Operação inválida.');
+  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage', 'scanMoviePage', 'scanSeriesPage', 'uploadCover', 'saveSeries', 'ensureSeason'].includes(message.action)) throw new Error('Operação inválida.');
+  if (message.action === 'scanSeriesPage') {
+    return { ok: true, data: await scanSeriesPage(message.body?.url) };
+  }
   if (message.action === 'scanMoviePage') {
     return { ok: true, data: await scanMoviePage(message.body?.url) };
   }
@@ -93,30 +173,42 @@ export async function handleMessage(message) {
       return { ok: true, data: capture };
     } finally { await chrome.tabs.remove(tab.id).catch(() => {}); }
   }
+  if (message.action === 'uploadCover') {
+    const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
+    if (configured !== origin) throw new Error('Reconecte ao ACERVO.');
+    const videoId = message.body?.videoId;
+    if (typeof videoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(videoId)) throw new Error('ID de série inválido.');
+    const cover = await getCoverData(message.body?.url);
+    const tabId = await siteTab(origin, false);
+    const [injected] = await chrome.scripting.executeScript({ target: { tabId }, world: 'ISOLATED', func: requestOnSite,
+      args: [{ origin, operation: 'uploadCover', body: { videoId, ...cover } }] });
+    return injected?.result || { ok: false, message: 'Não foi possível salvar a capa.' };
+  }
   const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
   if (configured !== origin) throw new Error('O endereço mudou. Clique em Conectar.');
-  if (message.action === 'save' && saving) throw new Error('Um envio já está em andamento. Aguarde o resultado.');
-  if (message.action === 'save') saving = true;
+  if (['save', 'saveSeries', 'ensureSeason'].includes(message.action) && saving) throw new Error('Um envio já está em andamento. Aguarde o resultado.');
+  if (['save', 'saveSeries', 'ensureSeason'].includes(message.action)) saving = true;
   try {
     if (message.action === 'save') await chrome.storage.session.set({ quickImportJob: { origin, status: 'pending', startedAt: Date.now(), title: message.body?.title || '' } });
     const tabId = await siteTab(origin, message.action === 'connect');
     const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: 'ISOLATED', func: requestOnSite,
-      args: [{ origin, operation: message.action === 'save' ? 'save' : 'options', ...(message.action === 'save' ? { body: message.body } : {}) }] });
+      args: [{ origin, operation: ['save', 'saveSeries', 'ensureSeason'].includes(message.action) ? message.action : 'options', ...(['save', 'saveSeries', 'ensureSeason'].includes(message.action) ? { body: message.body } : {}) }] });
     const response = result?.result || { ok: false, message: 'Não foi possível acessar a aba do ACERVO.' };
     if (message.action === 'save') await chrome.storage.session.set({ quickImportJob: { origin, status: response.ok ? 'done' : 'error', finishedAt: Date.now(), ...response } });
     return response;
   } catch (error) {
     if (message.action === 'save') await chrome.storage.session.set({ quickImportJob: { origin, status: 'error', finishedAt: Date.now(), ok: false, message: error.message } });
     throw error;
-  } finally { if (message.action === 'save') saving = false; }
+  } finally { if (['save', 'saveSeries', 'ensureSeason'].includes(message.action)) saving = false; }
 }
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (sender.id !== chrome.runtime.id || !['popup.html', 'links.html'].some((page) => sender.url?.split('?')[0] === chrome.runtime.getURL(page))) return false;
+  if (sender.id !== chrome.runtime.id || !['popup.html', 'links.html', 'series-links.html'].some((page) => sender.url?.split('?')[0] === chrome.runtime.getURL(page))) return false;
   handleMessage(message).then(sendResponse).catch((error) => sendResponse({ ok: false, message: error.message }));
   return true; // Keep the response channel alive if the popup closes during a save.
 });
 
 
+const seriesPageMenuId = 'acervo-import-series-pages';
 const contextMenuId = 'acervo-add-episode';
 const seasonMenuId = 'acervo-import-season';
 function installContextMenu() {
@@ -127,6 +219,7 @@ function installContextMenu() {
       contexts: ['link', 'page']
     });
     chrome.contextMenus.create({ id: seasonMenuId, title: 'Importar temporada para o ACERVO', contexts: ['page'] });
+    chrome.contextMenus.create({ id: seriesPageMenuId, title: 'Importar séries desta página', contexts: ['page'] });
   });
 }
 chrome.runtime.onInstalled.addListener(installContextMenu);
@@ -142,6 +235,28 @@ async function openContextForm(capture, error = '') {
   });
 }
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === seriesPageMenuId) {
+    let payload;
+    try {
+      if (!tab?.id || !/^https:/.test(tab.url || '')) throw new Error('Abra uma página HTTPS de séries.');
+      const [detected] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['season.js'] });
+      if (Array.isArray(detected?.result) && detected.result.length) {
+        payload = { entries: [], sourcePage: tab.url };
+      } else {
+        const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['movies.js'] });
+        payload = { entries: result?.result || [], sourcePage: tab.url };
+      }
+    } catch (error) {
+      payload = { entries: [], sourcePage: tab?.url || '', error: error.message };
+    }
+    await chrome.storage.session.set({ seriesPageCandidates: payload });
+    await chrome.windows.create({
+      url: chrome.runtime.getURL('series-links.html?context=1'),
+      type: 'popup', width: 650, height: 760, focused: true
+    });
+    return;
+  }
+
   if (info.menuItemId === seasonMenuId) {
     try {
       const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['season.js'] });

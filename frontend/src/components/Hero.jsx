@@ -1,7 +1,9 @@
 import { ArrowUpRight, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDuration } from "../utils/format";
+import { useDisplaySettings } from "../context/DisplaySettings";
 export default function Hero({ video }) {
+  const { showReleaseYear } = useDisplaySettings();
   return (
     <section className="hero" aria-labelledby="hero-title">
       <img
@@ -20,7 +22,7 @@ export default function Hero({ video }) {
         </h1>
         <div className="hero-meta">
           <strong>{video.category}</strong>
-          <span>{video.releaseYear ?? new Date(video.publishedAt).getFullYear()}</span>
+          {showReleaseYear && <span>{video.releaseYear ?? new Date(video.publishedAt).getFullYear()}</span>}
           <span>{video.contentType === "series" ? "Série" : video.sourceType === "external" && !video.duration ? "Vídeo externo" : formatDuration(video.duration)}</span>
         </div>
         <p className="hero-description">{video.description}</p>

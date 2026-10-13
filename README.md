@@ -4,6 +4,19 @@ React + Vite + Tailwind, Fastify, PostgreSQL, FFmpeg e HLS. Filmes, séries com 
 
 O catálogo fictício foi substituído pela API. A aplicação começa vazia e sem senha universal. O catálogo e os arquivos hospedados pelo ACERVO exigem autenticação. Vídeos externos seguem também as regras de acesso do provedor; sua URL pode ser acessada fora do ACERVO.
 
+## Importar séries pela extensão e ocultar anos globalmente
+
+No administrador, acesse **Configurações de exibição** (`/admin/settings`). Desmarque **Mostrar ano de exibição dos vídeos** e salve. A preferência vale para todos os usuários, em cards, destaque e detalhes de filmes/séries/episódios. Os anos cadastrados continuam intactos e podem voltar a aparecer quando a opção for reativada.
+
+A extensão principal (`extension/`) e a versão de lotes (`extension-lotes/`) oferecem **Importar séries por lista** e a opção de contexto **Importar séries desta página**. É possível colar até 50 páginas HTTPS por lote, incluindo páginas com cartões de várias séries. Cada página de série é analisada pelo mesmo extrator de episódios (`season.js`) já utilizado na importação de temporada. Apenas episódios reconhecidos como dublados e com player compatível são importados, agrupados em temporadas. As séries são criadas como rascunho por padrão, com registro da URL de origem para evitar recadastro ao repetir a importação. Falhas não interrompem as demais séries, e a tela permite tentar novamente apenas as que falharam.
+
+**Capas:** a mesma cópia de imagem JPG/PNG/WebP usada nos filmes também é aplicada às séries. Capas verticais preservam a proporção de cartaz e podem servir como padrão para episódios sem capa. Se a imagem ou o episódio estiver em domínio diferente do site, a extensão exibirá um botão para solicitar permissão antes de acessá-lo. Não há desbloqueio de servidores, login, DRM ou download de vídeos.
+
+**Limites:** a análise utiliza links visíveis na página e não passa para páginas seguintes do catálogo automaticamente. Listagens e textos não reconhecidos podem exigir revisão manual, e episódios de uma série que estejam em páginas de temporadas separadas podem precisar de importação específica. Faça o primeiro teste com uma ou duas séries, sem publicar.
+
+Para atualizar uma instalação existente, preserve `.env` e volumes, aplique a migration 009 com `docker compose up -d --build`, e depois recarregue a extensão em `chrome://extensions` ou `edge://extensions`. Não use `docker compose down -v`.
+
+
 ## Enviar filmes pelo navegador
 
 A extensão **Enviar para ACERVO 2.1** captura nome/player e salva filmes ou episódios diretamente. Lembra categoria, série, temporada e publicação, com numeração automática no servidor e proteção contra duplicados. O fluxo de revisão no painel continua disponível. Consulte [atualização, conexão e uso](extension/README.md).

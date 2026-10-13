@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, RequireAuth } from "./context/Auth";
 import Header from "./components/Header";
+import { DisplaySettingsProvider } from "./context/DisplaySettings";
 import Home from "./pages/Home";
 import Catalog from "./pages/Catalog";
 import Login from "./pages/Login";
@@ -16,6 +17,7 @@ export default function App() {
   }, [pathname]);
   return (
     <AuthProvider>
+      <DisplaySettingsProvider>
       <a className="skip-link" href="#conteudo">
         Pular para o conteúdo
       </a>
@@ -91,6 +93,7 @@ export default function App() {
         <p>Seus momentos merecem uma tela.</p>
         <span>Seu cinema pessoal</span>
       </footer>
+      </DisplaySettingsProvider>
     </AuthProvider>
   );
 }

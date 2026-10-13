@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { query, transaction } from '../db.js';
 import { externalUrl, resolveExternal } from '../external.js';
 import { playerIdentity } from './imports.js';
+import { accessibleVideo, dto } from '../catalog.js';
 
 const input = z.object({
   title: z.string().trim().min(1).max(160),
@@ -21,8 +22,42 @@ const input = z.object({
   if (data.contentType === 'episode' && (!data.seasonId || data.categoryId))
     ctx.addIssue({ code: 'custom', path: ['seasonId'], message: 'Selecione a temporada. A categoria será a mesma da série.' });
 });
+const seriesInput = z.object({
+  sourcePage: z.string().url().max(2048).refine((text) => {
+    try {
+      const url = new URL(text);
+      return url.protocol === 'https:' && !url.username && !url.password && !url.hash;
+    } catch { return false; }
+  }, 'Informe uma página HTTPS válida, sem credenciais.'),
+  title: z.string().trim().min(1).max(160),
+  description: z.string().max(10000).default(''),
+  categoryId: uuid,
+  published: z.boolean().default(false),
+}).strict();
+
 const nextNumber = async (db, seasonId) => Number((await db.query('SELECT COALESCE(max(episode_number),0)+1 AS number FROM videos WHERE season_id=$1', [seasonId])).rows[0].number);
 export default async function quickImportRoutes(app) {
+  app.post('/api/admin/quick-series', { preHandler: admin, config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const data = seriesInput.parse(req.body);
+    const source = new URL(data.sourcePage);
+    source.hash = '';
+    const sourcePage = source.href;
+    const result = await transaction(async (db) => {
+      await db.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['acervo-series:' + sourcePage]);
+      const { rows: [existing] } = await db.query('SELECT series_id FROM series_import_sources WHERE source_url=$1', [sourcePage]);
+      if (existing) return { id: existing.series_id, duplicate: true };
+      const { rows: [category] } = await db.query('SELECT id FROM categories WHERE id=$1', [data.categoryId]);
+      if (!category) fail(404, 'Categoria não encontrada.');
+      const id = randomUUID();
+      await db.query("INSERT INTO videos(id,title,description,category_id,owner_id,published,storage_driver,source_type,content_type,status,published_at,episode_cover_default) VALUES($1,$2,$3,$4,$5,$6,$7,'collection','series','ready',CASE WHEN $6 THEN now() ELSE NULL END,true)",
+        [id,data.title,data.description,data.categoryId,req.user.id,data.published,config.STORAGE_DRIVER]);
+      await db.query('INSERT INTO series_import_sources(source_url,series_id) VALUES($1,$2)', [sourcePage, id]);
+      return { id, duplicate: false };
+    });
+    const series = dto(await accessibleVideo(result.id, req.user));
+    return reply.code(result.duplicate ? 200 : 201).send({ id: series.id, title: series.title, duplicate: result.duplicate, published: series.published });
+  });
+
   app.get('/api/admin/import-options', { preHandler: admin }, async (req) => {
     const [categories, series, seasons] = await Promise.all([
       query('SELECT id,name FROM categories ORDER BY name'),
