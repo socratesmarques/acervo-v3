@@ -1,3 +1,5 @@
+# Enviar para ACERVO 2.3.0 — envio rápido
+
 ## Lista de páginas de filmes (catálogos ou filmes individuais)
 
 Abra a extensão e selecione **Importar lista de links**. Cole até **50 endereços HTTPS**, um por linha. Cada endereço pode ser uma página com vários cartões de filmes (como `/filmes/pagina-1`) ou uma página individual (como `/filme/xyz`). Em página de catálogo, a extensão reutiliza o mesmo detector `movies.js` da opção **Importar filmes desta página**; em seguida, abre cada filme encontrado e captura o player com `extract.js`, gravando pelo endpoint já existente. Página individual com player é cadastrada diretamente.
@@ -7,25 +9,6 @@ A importação avança de página em página, exibindo filmes salvos, duplicados
 Os links candidatos são identificados de forma heurística, sem garantia de que todos sejam filmes. Faça um teste com uma listagem pequena antes de importar dezenas de páginas. A extensão solicita permissão para os domínios fornecidos; não ultrapassa login, DRM, proteções de iframe ou bloqueios dos servidores. Capas externas exigem permissão do próprio domínio da imagem e não impedem o cadastro do filme.
 
 Testes automatizados: `node --test extension/test-links.mjs extension/test-movie-pages.mjs` a partir da raiz do repositório.
-
-# Enviar para ACERVO 2.3.0 — envio rápido
-
-## Novo: importar uma lista de links (uma categoria para todos)
-
-Abra a extensão e clique em **Importar lista de links**. Uma janela independente será aberta para manter o progresso visível. Com o ACERVO aberto e autenticado como administrador:
-
-1. Cole até **50 endereços HTTPS**, um por linha. Exemplo:
-   `https://exemplo.com/filme-a`.
-   Também é aceito `Nome do filme | https://exemplo.com/filme-b` para indicar um título quando a página não informa um.
-2. Escolha a **categoria** que será aplicada a todos os novos filmes.
-3. Por segurança, **Publicar imediatamente** começa desmarcado: os filmes serão rascunhos. Ative somente se desejar.
-4. Clique em **Importar lista**, conceda acesso aos domínios dos links e mantenha a janela aberta. A extensão abre cada página em segundo plano, identifica um player compatível, envia um filme de cada vez e fecha a aba temporária.
-5. Veja quantos foram salvos, quantos já existiam e quais falharam. **Tentar novamente apenas as falhas** não reenvia os sucessos.
-
-Links repetidos na lista são ignorados. Um player já existente no Acervo não é movido de categoria nem publicado novamente. Sem título ou player compatível, o link é marcado como falha para revisão; não cria um cadastro incorreto. A função não baixa vídeos, não contorna bloqueios e não adiciona capa automaticamente; caso necessário, ajuste as capas no painel. A publicação e os direitos de uso do conteúdo são de sua responsabilidade.
-
-Para atualizar, dê `git pull` no computador que tem a pasta da extensão e clique em **Recarregar** em `chrome://extensions` ou `edge://extensions`. **Não é necessário reiniciar o Motorola ou recompilar o site para esta alteração.**
-
 
 ## Blogger Video (2.2.5)
 
@@ -96,7 +79,7 @@ Crie séries, temporadas e categorias no painel administrativo. Em **Player e ma
 - Em páginas com vários players, confira a seleção em **Player e mais opções**.
 - Se a página Embed não tiver nome, use **Guardar nome** na página anterior. Na mesma origem, esse nome é sugerido automaticamente no Embed; confira se corresponde ao episódio. **Usar nome guardado** e **Apagar nome guardado** continuam disponíveis.
 - **Revisar no painel** mantém o fluxo antigo de abrir uma aba para revisar/salvar um rascunho. Esse fluxo não transporta a seleção de temporada do envio rápido; use Salvar episódio para cadastrar diretamente na temporada.
-- Não há busca automática do catálogo do provedor, download de arquivos ou varredura de várias páginas. A captura acontece na página ativa quando você abre a extensão.
+- A importação individual usa somente a página aberta. Na tela de lista, só são percorridas as URLs informadas; a extensão não descobre automaticamente a próxima página do catálogo nem baixa vídeos.
 
 ## Confirmações e repetição
 
