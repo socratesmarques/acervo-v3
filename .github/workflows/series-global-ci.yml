@@ -1,0 +1,55 @@
+name: Séries e configuração global
+on:
+  push:
+    branches:
+      - feature/series-pages-global-year-covers
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'extension/**'
+      - 'extension-lotes/**'
+      - '.github/workflows/series-global-ci.yml'
+jobs:
+  extensoes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sintaxe dos scripts das duas extensões
+        run: |
+          for folder in extension extension-lotes; do
+            for script in background.js bridge.js popup.js links.js series-links.js series-import.mjs; do
+              node --check "$folder/$script"
+            done
+          done
+      - name: Testes da extração e importação
+        run: node --test extension/test-links.mjs extension/test-movie-pages.mjs extension/test-links-flow.mjs extension/test-series-import.mjs
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm test
+        working-directory: backend
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
