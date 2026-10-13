@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ACERVO · Lista de links</title>
+  <link rel="stylesheet" href="links.css">
+</head>
+<body>
+  <header><h1>ACERVO<span>•</span></h1><span>IMPORTAÇÃO POR LINKS</span></header>
+  <h2>Adicionar vários filmes</h2>
+  <p>Cole um link de página de filme por linha. A extensão identifica o título e o player e cadastra cada filme na categoria escolhida.</p>
+  <details id="connection">
+    <summary id="connection-label">Conectar ao ACERVO</summary>
+    <label>Endereço do seu ACERVO
+      <input type="url" id="origin" placeholder="https://seu-acervo.example" maxlength="300">
+    </label>
+    <button type="button" id="connect">Conectar</button>
+    <button type="button" id="open-site" class="secondary">Abrir site para entrar como administrador</button>
+  </details>
+  <label for="links">Lista de links (até 50, um por linha)</label>
+  <textarea id="links" rows="8" maxlength="120000" spellcheck="false" placeholder="https://site.example/filme-a&#10;https://site.example/filme-b&#10;Meu filme | https://site.example/filme-c"></textarea>
+  <p class="hint">Opcional: use <code>Nome do filme | https://...</code> para definir o título manualmente. Endereços repetidos são ignorados.</p>
+  <div class="row">
+    <label class="grow" for="category">Categoria para todos os filmes
+      <select id="category" disabled><option value="">Conecte ao ACERVO</option></select>
+    </label>
+    <button id="refresh" type="button" class="secondary small" disabled>Atualizar categorias</button>
+  </div>
+  <label class="check"><input type="checkbox" id="published"> Publicar imediatamente (desmarcado: salvar como rascunho)</label>
+  <p class="hint">O navegador pedirá permissão para acessar os domínios escolhidos. Apenas players compatíveis com o ACERVO serão cadastrados. Mantenha esta janela aberta até o final.</p>
+  <button id="start" type="button" disabled>Importar lista</button>
+  <button id="retry" type="button" class="secondary" hidden>Tentar novamente apenas as falhas</button>
+  <p id="progress" role="status" aria-live="polite"></p>
+  <p id="status" role="status" aria-live="polite"></p>
+  <ol id="results" aria-label="Resultado de cada link"></ol>
+  <script type="module" src="links.js"></script>
+</body>
+</html>

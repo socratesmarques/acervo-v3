@@ -1,4 +1,21 @@
-# Enviar para ACERVO 2.2.5 — envio rápido
+# Enviar para ACERVO 2.3.0 — envio rápido
+
+## Novo: importar uma lista de links (uma categoria para todos)
+
+Abra a extensão e clique em **Importar lista de links**. Uma janela independente será aberta para manter o progresso visível. Com o ACERVO aberto e autenticado como administrador:
+
+1. Cole até **50 endereços HTTPS**, um por linha. Exemplo:
+   `https://exemplo.com/filme-a`.
+   Também é aceito `Nome do filme | https://exemplo.com/filme-b` para indicar um título quando a página não informa um.
+2. Escolha a **categoria** que será aplicada a todos os novos filmes.
+3. Por segurança, **Publicar imediatamente** começa desmarcado: os filmes serão rascunhos. Ative somente se desejar.
+4. Clique em **Importar lista**, conceda acesso aos domínios dos links e mantenha a janela aberta. A extensão abre cada página em segundo plano, identifica um player compatível, envia um filme de cada vez e fecha a aba temporária.
+5. Veja quantos foram salvos, quantos já existiam e quais falharam. **Tentar novamente apenas as falhas** não reenvia os sucessos.
+
+Links repetidos na lista são ignorados. Um player já existente no Acervo não é movido de categoria nem publicado novamente. Sem título ou player compatível, o link é marcado como falha para revisão; não cria um cadastro incorreto. A função não baixa vídeos, não contorna bloqueios e não adiciona capa automaticamente; caso necessário, ajuste as capas no painel. A publicação e os direitos de uso do conteúdo são de sua responsabilidade.
+
+Para atualizar, dê `git pull` no computador que tem a pasta da extensão e clique em **Recarregar** em `chrome://extensions` ou `edge://extensions`. **Não é necessário reiniciar o Motorola ou recompilar o site para esta alteração.**
+
 
 ## Blogger Video (2.2.5)
 

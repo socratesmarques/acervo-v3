@@ -143,7 +143,7 @@ export async function handleMessage(message) {
   } finally { if (message.action === 'save') saving = false; }
 }
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (sender.id !== chrome.runtime.id || sender.url?.split('?')[0] !== chrome.runtime.getURL('popup.html')) return false;
+  if (sender.id !== chrome.runtime.id || !['popup.html', 'links.html'].some((page) => sender.url?.split('?')[0] === chrome.runtime.getURL(page))) return false;
   handleMessage(message).then(sendResponse).catch((error) => sendResponse({ ok: false, message: error.message }));
   return true; // Keep the response channel alive if the popup closes during a save.
 });

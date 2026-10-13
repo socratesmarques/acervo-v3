@@ -3,3 +3,5 @@
 h2{font-size:16px;margin:8px 0}#batch-list{max-height:220px;overflow:auto;border:1px solid #353b43;border-radius:8px;padding:4px 9px}#batch-list .check{border-bottom:1px solid #2b3038;margin:0;padding:8px 2px;align-items:flex-start;overflow-wrap:anywhere}#batch-list .check:last-child{border:0}#batch-list .check span{line-height:1.35}#batch-progress{font-weight:600}#batch-send{background:#c4ef65;color:#15200a;font-weight:700;border:0}
 
 #batch-status{margin:10px 0;overflow-wrap:anywhere;max-height:220px;overflow:auto;white-space:pre-wrap}#batch-status[data-error=true]{color:#ffb7a3}#batch-destination{padding:8px 10px;background:#1b2027;border:1px solid #353b43;border-radius:8px;margin:8px 0}#batch-destination label{margin:6px 0}#batch-destination .check{margin:10px 0}
+
+#open-links{border-color:#c4ef65;color:#c4ef65;font-weight:700;margin:0 0 10px}
