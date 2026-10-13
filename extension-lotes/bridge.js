@@ -38,6 +38,34 @@ export async function requestOnSite({ origin, operation, body }) {
       window.dispatchEvent(new Event('catalog-change'));
       return { ok: true, data };
     }
+
+    if (operation === 'saveSeries' || operation === 'ensureSeason') {
+      const auth = await request('/api/auth/me');
+      if (auth.user?.role !== 'admin' || typeof auth.csrf !== 'string')
+        throw new Error('Entre como administrador no ACERVO.');
+      const headers = { 'Content-Type': 'application/json', 'X-CSRF-Token': auth.csrf };
+      if (operation === 'saveSeries') {
+        const data = await request('/api/admin/quick-series', {
+          method: 'POST', headers, body: JSON.stringify(body)
+        });
+        if (!data.id || typeof data.duplicate !== 'boolean')
+          throw new Error('O cadastro da série não foi confirmado.');
+        window.dispatchEvent(new Event('catalog-change'));
+        return { ok: true, data };
+      }
+      const seriesId = String(body?.seriesId || '');
+      const number = Number(body?.number);
+      if (!/^[0-9a-f-]{36}$/i.test(seriesId) || !Number.isInteger(number) || number < 1 || number > 1000)
+        throw new Error('Série ou temporada inválida.');
+      const current = await request('/api/series/' + seriesId + '/seasons');
+      const existing = current.items?.find((s) => s.number === number);
+      if (existing) return { ok: true, data: { id: existing.id, number, duplicate: true } };
+      const data = await request('/api/series/' + seriesId + '/seasons', {
+        method: 'POST', headers, body: JSON.stringify({ number, title: String(body.title || '').slice(0, 160) })
+      });
+      if (!data.id) throw new Error('A temporada não foi confirmada.');
+      return { ok: true, data: { id: data.id, number, duplicate: false } };
+    }
     if (operation !== 'save') throw new Error('Operação inválida.');
     const auth = await request('/api/auth/me');
     if (auth.user?.role !== 'admin' || typeof auth.csrf !== 'string') throw new Error('Entre como administrador no ACERVO.');
