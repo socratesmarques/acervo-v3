@@ -68,7 +68,7 @@ async function capture() {
     $('title').value = captured.title || '';
     $('description').value = (captured.description || '').slice(0, 10000);
     $('player').replaceChildren();
-    for (const url of captured.urls || []) $('player').add(new Option(url, url));
+    for (const url of captured.urls || []) $('player').add(new Option(captured.players?.find(p => p.url === url)?.name ? 'Blogger Video — ' + url : url, url));
     $('extras').open = true;
     if (pending.error) status(pending.error, true);
     else status('Episódio capturado pelo menu de contexto. Confira o nome e o player.');
@@ -86,7 +86,7 @@ async function capture() {
   } else status(captured.urls.length ? 'Nome preenchido automaticamente. Confira antes de enviar.' : 'Player não encontrado. Guarde o nome e abra a página com o código de incorporação.');
   $('title').value = title; $('description').value = description.slice(0, 10000);
   $('player').replaceChildren();
-  for (const url of captured.urls) $('player').add(new Option(url, url));
+  for (const url of captured.urls) $('player').add(new Option(captured.players?.find(p => p.url === url)?.name ? 'Blogger Video — ' + url : url, url));
   if (captured.urls.length > 1 || !title) $('extras').open = true;
   updateButtons();
 }

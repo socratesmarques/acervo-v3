@@ -1,5 +1,13 @@
 # Enviar para ACERVO V2 — Importador em lotes (teste)
 
+## Blogger Video (1.1.1)
+
+Reconhece o iframe `https://www.blogger.com/video.g?token=...` como
+**Blogger Video**, preservando a URL completa. Também reconhece `data-src`
+e HTML de incorporação copiado na página. Atualize o servidor com a migration
+008 e recarregue esta extensão. Veja [uso, atualização e testes](../docs/blogger-video.md).
+O player original é incorporado, sem baixar vídeos ou contornar restrições.
+
 Esta pasta é uma **segunda extensão** baseada na versão 2.2.4 do importador original. A versão oficial continua na pasta `extension/`, sem alterações. Chrome/Edge tratará a nova extensão como independente, com armazenamento e permissões separados.
 
 ## Instalação lado a lado

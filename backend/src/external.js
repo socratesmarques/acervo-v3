@@ -36,6 +36,10 @@ export function validatePath(kind, path) {
   const url = new URL(path, "https://validation.example");
   const valid = kind === "youtube" ? /^\/embed\/[a-zA-Z0-9_-]+$/.test(url.pathname)
     : kind === "vimeo" ? /^\/video\/\d+$/.test(url.pathname)
+    : kind === "blogger" ? url.pathname === "/video.g" &&
+      url.searchParams.getAll("token").length === 1 &&
+      Boolean(url.searchParams.get("token")?.trim()) &&
+      !/[\s\u0000-\u001f\u007f]/.test(url.searchParams.get("token"))
     : kind === "redecanais" && url.pathname === "/player3/server.php";
   if (!valid) fail(400, "Use a URL de incorporação do provedor, não uma página comum ou link encurtado.");
 }
@@ -44,6 +48,8 @@ export async function resolveExternal(value) {
   const { rows: [provider] } = await query(
     "SELECT p.* FROM providers p JOIN provider_origins o ON o.provider_id=p.id WHERE o.origin=$1", [url.origin]);
   if (!provider) fail(400, "Domínio não cadastrado. Atualize o endereço em Admin → Provedores.");
+  if (provider.kind === "blogger" && url.origin !== "https://www.blogger.com")
+    fail(400, "Blogger Video exige o domínio https://www.blogger.com.");
   const externalPath = url.pathname + url.search + url.hash;
   validatePath(provider.kind, externalPath);
   return { providerId: provider.id, externalPath };
@@ -51,6 +57,8 @@ export async function resolveExternal(value) {
 export function playbackUrl(video) {
   if (video.source_type !== "external") return null;
   const origin = providerOrigin.parse(video.provider_origin);
+  if (video.provider_kind === "blogger" && origin !== "https://www.blogger.com")
+    fail(400, "Blogger Video exige o domínio https://www.blogger.com.");
   validatePath(video.provider_kind, video.external_path);
   return origin + video.external_path;
 }

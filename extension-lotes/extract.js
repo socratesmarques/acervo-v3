@@ -10,7 +10,12 @@
         if (!encoded || encoded.length > 6000) return null;
         return playerUrl(atob(encoded), url.origin + '/', depth + 1);
       }
-      const supported = url.pathname === '/player3/server.php' ||
+      const blogger = url.hostname === 'www.blogger.com' && url.pathname === '/video.g' &&
+        url.protocol === 'https:' && !url.port &&
+        url.searchParams.getAll('token').length === 1 &&
+        Boolean(url.searchParams.get('token')?.trim()) &&
+        !/[\s\u0000-\u001f\u007f]/.test(url.searchParams.get('token'));
+      const supported = blogger || url.pathname === '/player3/server.php' ||
         (/^(www\.)?youtube(-nocookie)?\.com$/.test(url.hostname) && /^\/embed\/[\w-]+$/.test(url.pathname)) ||
         (url.hostname === 'player.vimeo.com' && /^\/video\/\d+$/.test(url.pathname));
       if (!supported) return null;
@@ -19,10 +24,17 @@
     } catch { return null; }
   }
   const urls = new Set();
+  // Metadata is additive: older flows still consume urls as an array of strings.
+  const players = () => [...urls].map(url => ({
+    url, name: new URL(url).hostname === 'www.blogger.com' ? 'Blogger Video' : null
+  }));
   const add = raw => { const url = playerUrl(raw); if (url && urls.size < 30) urls.add(url); };
   add(location.href);
-  for (const element of [...document.querySelectorAll('iframe[src], a[href]')].slice(0, 1000)) {
-    add(element.getAttribute(element.tagName === 'IFRAME' ? 'src' : 'href'));
+  for (const element of [...document.querySelectorAll('iframe[src], iframe[data-src], a[href]')].slice(0, 1000)) {
+    if (element.tagName === 'IFRAME') {
+      add(element.getAttribute('src'));
+      add(element.getAttribute('data-src'));
+    } else add(element.getAttribute('href'));
   }
   for (const element of [...document.querySelectorAll('textarea, pre, code')].slice(0, 50)) {
     const raw = (element.value ?? element.textContent ?? '').slice(0, 20000);
@@ -54,5 +66,5 @@
     pageImage?.getAttribute('data-src'), pageImage?.getAttribute('data-original'),
     pageImage?.currentSrc, pageImage?.getAttribute('src')
   ].map(poster).find(Boolean) || null;
-  return { version: 1, title, description: meta('meta[property="og:description"]') || meta('meta[name="description"]'), urls: [...urls], coverUrl, sourcePage: location.href };
+  return { version: 1, title, description: meta('meta[property="og:description"]') || meta('meta[name="description"]'), urls: [...urls], players: players(), coverUrl, sourcePage: location.href };
 })();

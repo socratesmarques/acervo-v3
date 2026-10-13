@@ -18,6 +18,7 @@ export default function ExternalPlayer({ video }) {
   }
   return (
     <section aria-label="Player externo">
+      {video.providerName && <p className="form-hint">Provedor: {video.providerName}</p>}
       <div className="external-player">
         {started ? (
           <iframe
@@ -38,6 +39,7 @@ export default function ExternalPlayer({ video }) {
         )}
       </div>
       <p className="form-hint">Os controles e a disponibilidade dependem do provedor. O progresso não é salvo automaticamente. Uma visualização representa a abertura do player.</p>
+      {video.providerId === "blogger" && <p className="form-hint">Se o Blogger recusar a incorporação ou o token não for mais válido, será necessário obter um novo endereço autorizado. O ACERVO não contorna essas restrições.</p>}
     </section>
   );
 }

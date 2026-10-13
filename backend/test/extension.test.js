@@ -12,7 +12,8 @@ globalThis.chrome = {
   },
   tabs: { query: async () => [{ id: 1, url: `${origin}:444/admin` }, { id: 2, url: `${origin}/admin` }], get: async () => ({ status: 'complete' }) },
   scripting: { executeScript: async (args) => { injection = args; return [{ result: await responder() }]; } },
-  runtime: { id: 'self', getURL: (file) => `chrome-extension://self/${file}`, onMessage: { addListener: (fn) => { listener = fn; } } },
+  runtime: { id: 'self', getURL: (file) => `chrome-extension://self/${file}`, onMessage: { addListener: (fn) => { listener = fn; } }, onInstalled: { addListener() {} } },
+  contextMenus: { onClicked: { addListener() {} } },
 };
 const { handleMessage } = await import('../../extension/background.js');
 test('extensão: permissões, origem exata, envio persistido e CSRF', async (t) => {
