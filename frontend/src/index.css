@@ -1308,3 +1308,51 @@ progress {
 
 /* Capas verticais importadas conservam o cartaz completo, sem recortar. */
 .thumbnail.thumbnail-portrait { aspect-ratio: 2 / 3; }
+
+/* Exclusão em massa: controles legíveis também no celular. */
+.bulk-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 14px;
+  margin: 12px 0 20px;
+  border: 1px solid #364035;
+  border-radius: 10px;
+  background: #1a2119;
+}
+.bulk-toolbar .muted { flex: 1 1 260px; font-size: 13px; }
+.bulk-toolbar strong { white-space: nowrap; }
+.bulk-toolbar .button { margin: 0; white-space: normal; }
+.bulk-check, .series-bulk-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.bulk-check input, .series-bulk-check input, .admin-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: #d2f86a;
+  cursor: pointer;
+}
+.bulk-check input:disabled, .series-bulk-check input:disabled,
+.admin-table input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .5; }
+.series-bulk-check {
+  padding: 12px 14px;
+  background: #192019;
+  border-bottom: 1px solid #353d33;
+}
+.danger-bulk {
+  background: #b73030;
+  color: #fff;
+  border: 1px solid #dc5656;
+}
+.danger-bulk:hover:not(:disabled) { background: #d13c3c; }
+.danger-bulk:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 600px) {
+  .bulk-toolbar .button { flex: 1 1 100%; justify-content: center; }
+  .bulk-toolbar .muted { flex-basis: 100%; }
+}
