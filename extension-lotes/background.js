@@ -245,8 +245,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     let payload;
     try {
       if (!tab?.id || !/^https:/.test(tab.url || '')) throw new Error('Abra uma página HTTPS de séries.');
-      const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['movies.js'] });
-      payload = { entries: result?.result || [], sourcePage: tab.url };
+      const [detected] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['season.js'] });
+      if (Array.isArray(detected?.result) && detected.result.length) {
+        payload = { entries: [], sourcePage: tab.url };
+      } else {
+        const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['movies.js'] });
+        payload = { entries: result?.result || [], sourcePage: tab.url };
+      }
     } catch (error) {
       payload = { entries: [], sourcePage: tab?.url || '', error: error.message };
     }
