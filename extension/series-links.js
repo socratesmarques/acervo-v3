@@ -131,10 +131,14 @@ async function importSeries(items) {
             const episodes = normalizeSeriesEpisodes(detail.episodes);
             if (!episodes.length) throw new Error('Nenhum episódio dublado válido encontrado.');
             const episodeHosts = [...new Set(episodes.map((e) => 'https://' + new URL(e.url).hostname + '/*'))];
+            const missingHosts = [];
             for (const host of episodeHosts) {
-              if (!(await chrome.permissions.contains({ origins: [host] })) && !pendingEpisodeHosts.includes(host)) pendingEpisodeHosts.push(host);
+              if (!(await chrome.permissions.contains({ origins: [host] }))) {
+                missingHosts.push(host);
+                if (!pendingEpisodeHosts.includes(host)) pendingEpisodeHosts.push(host);
+              }
             }
-            if (pendingEpisodeHosts.length) throw new Error('Acesso a servidor externo de episódios necessário. Autorize os servidores e repita a série.');
+            if (missingHosts.length) throw new Error('Acesso a servidor externo de episódios necessário. Autorize os servidores e repita a série.');
             const title = String(entry.title || detail.page?.title || '').trim().slice(0, 160);
             if (!title) throw new Error('Nome não identificado. Use Nome da série | URL.');
             const imageUrl = entry.coverUrl || detail.page?.coverUrl;
