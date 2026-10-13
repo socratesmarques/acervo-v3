@@ -25,4 +25,4 @@ jobs:
           node --check extension/link-import.mjs
           node --check extension-lotes/link-import.mjs
       - name: Testar extração e fluxo simulado das páginas
-        run: node --test extension/test-links.mjs extension/test-movie-pages.mjs
+        run: node --test extension/test-links.mjs extension/test-movie-pages.mjs extension/test-links-flow.mjs
