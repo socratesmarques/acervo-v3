@@ -26,7 +26,7 @@ jobs:
             done
           done
       - name: Testes da extração e importação
-        run: node --test extension/test-links.mjs extension/test-movie-pages.mjs extension/test-links-flow.mjs extension/test-series-import.mjs extension/test-series-pages.mjs
+        run: node --test extension/test-links.mjs extension/test-movie-pages.mjs extension/test-links-flow.mjs extension/test-series-import.mjs extension/test-series-pages.mjs extension/test-series-links-flow.mjs
   backend:
     runs-on: ubuntu-latest
     steps:
