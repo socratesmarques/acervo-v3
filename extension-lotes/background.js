@@ -147,7 +147,7 @@ async function scanSeriesPage(raw) {
 
 export async function handleMessage(message) {
   const origin = acervoOrigin(message.origin);
-  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage', 'scanMoviePage', 'scanSeriesPage', 'uploadCover'].includes(message.action)) throw new Error('Operação inválida.');
+  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage', 'scanMoviePage', 'scanSeriesPage', 'uploadCover', 'saveSeries', 'ensureSeason'].includes(message.action)) throw new Error('Operação inválida.');
   if (message.action === 'scanSeriesPage') {
     return { ok: true, data: await scanSeriesPage(message.body?.url) };
   }
@@ -190,20 +190,20 @@ export async function handleMessage(message) {
   }
   const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
   if (configured !== origin) throw new Error('O endereço mudou. Clique em Conectar.');
-  if (message.action === 'save' && saving) throw new Error('Um envio já está em andamento. Aguarde o resultado.');
-  if (message.action === 'save') saving = true;
+  if (['save', 'saveSeries', 'ensureSeason'].includes(message.action) && saving) throw new Error('Um envio já está em andamento. Aguarde o resultado.');
+  if (['save', 'saveSeries', 'ensureSeason'].includes(message.action)) saving = true;
   try {
     if (message.action === 'save') await chrome.storage.session.set({ quickImportJob: { origin, status: 'pending', startedAt: Date.now(), title: message.body?.title || '' } });
     const tabId = await siteTab(origin, message.action === 'connect');
     const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: 'ISOLATED', func: requestOnSite,
-      args: [{ origin, operation: message.action === 'save' ? 'save' : 'options', ...(message.action === 'save' ? { body: message.body } : {}) }] });
+      args: [{ origin, operation: ['save', 'saveSeries', 'ensureSeason'].includes(message.action) ? message.action : 'options', ...(['save', 'saveSeries', 'ensureSeason'].includes(message.action) ? { body: message.body } : {}) }] });
     const response = result?.result || { ok: false, message: 'Não foi possível acessar a aba do ACERVO.' };
     if (message.action === 'save') await chrome.storage.session.set({ quickImportJob: { origin, status: response.ok ? 'done' : 'error', finishedAt: Date.now(), ...response } });
     return response;
   } catch (error) {
     if (message.action === 'save') await chrome.storage.session.set({ quickImportJob: { origin, status: 'error', finishedAt: Date.now(), ok: false, message: error.message } });
     throw error;
-  } finally { if (message.action === 'save') saving = false; }
+  } finally { if (['save', 'saveSeries', 'ensureSeason'].includes(message.action)) saving = false; }
 }
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !['popup.html', 'links.html', 'series-links.html'].some((page) => sender.url?.split('?')[0] === chrome.runtime.getURL(page))) return false;
