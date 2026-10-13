@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ACERVO · Lista de páginas de séries</title>
+  <link rel="stylesheet" href="links.css">
+</head>
+<body>
+  <header><h1>ACERVO<span>•</span></h1><span>IMPORTAÇÃO POR LINKS</span></header>
+  <h2>Importar séries de várias páginas</h2>
+  <p>Cole URLs de páginas de séries ou de listas de séries, uma por linha. Cada série será cadastrada com suas temporadas e episódios dublados encontrados na página, usando a importação existente.</p>
+  <details id="connection">
+    <summary id="connection-label">Conectar ao ACERVO</summary>
+    <label>Endereço do seu ACERVO
+      <input type="url" id="origin" placeholder="https://seu-acervo.example" maxlength="300">
+    </label>
+    <button type="button" id="connect">Conectar</button>
+    <button type="button" id="open-site" class="secondary">Abrir site para entrar como administrador</button>
+  </details>
+  <label for="links">Páginas de séries (até 50 URLs, uma por linha)</label>
+  <textarea id="links" rows="8" maxlength="120000" spellcheck="false" placeholder="https://site.example/series/pagina-1&#10;https://site.example/series/pagina-2&#10;Minha série | https://site.example/serie-individual"></textarea>
+  <p class="hint">Opcional: <code>Nome da série | https://...</code>. Em listagens, os nomes são obtidos dos cartões. Revise a lista antes de importar.</p>
+  <div class="row">
+    <label class="grow" for="category">Categoria para todas as séries
+      <select id="category" disabled><option value="">Conecte ao ACERVO</option></select>
+    </label>
+    <button id="refresh" type="button" class="secondary small" disabled>Atualizar categorias</button>
+  </div>
+  <label class="check"><input type="checkbox" id="published"> Publicar imediatamente (desmarcado: salvar como rascunho)</label>
+  <p class="hint">O navegador pedirá permissão para acessar os domínios escolhidos. Importamos somente episódios identificados e players compatíveis. O importador não cria séries vazias nem contorna restrições de acesso. Mantenha a janela aberta até terminar.</p>
+  <button id="start" type="button" disabled>Importar séries das páginas</button>
+  <button id="retry" type="button" class="secondary" hidden>Repetir somente as falhas</button>
+  <p id="progress" role="status" aria-live="polite"></p>
+  <p id="status" role="status" aria-live="polite"></p>
+  <ol id="results" aria-label="Resultado de cada link"></ol>
+  <button id="covers" class="secondary" type="button" hidden>Autorizar capas pendentes</button>
+  <script type="module" src="series-links.js"></script>
+</body>
+</html>
