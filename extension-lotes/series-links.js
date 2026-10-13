@@ -2,7 +2,7 @@ import { acervoOrigin, hostPattern, preferenceKey } from './shared.js';
 import { parseLinkList } from './links-parse.mjs';
 import { expandSeriesSource, normalizeSeriesEpisodes } from './series-import.mjs';
 const $ = (id) => document.getElementById(id);
-let origin = '', options, ready = false, busy = false, failed = [], pendingCovers = [];
+let origin = '', options, ready = false, busy = false, failed = [], pendingCovers = [], pendingEpisodeHosts = [];
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function status(message, error = false) {
   $('status').textContent = message; $('status').dataset.error = String(error);
@@ -21,6 +21,8 @@ function buttons() {
   $('refresh').disabled = busy || !ready;
   $('published').disabled = busy;
   $('links').disabled = busy;
+  $('episode-hosts').disabled = busy || !pendingEpisodeHosts.length;
+  $('episode-hosts').hidden = !pendingEpisodeHosts.length;
   $('covers').disabled = busy || !pendingCovers.length;
   $('covers').hidden = !pendingCovers.length;
 }
@@ -94,7 +96,7 @@ async function importSeries(items) {
   try { grant = chrome.permissions.request({ origins: originPatterns(items) }); }
   catch (error) { status(error.message, true); return; }
   busy = true; buttons(); $('results').replaceChildren();
-  $('retry').hidden = true; pendingCovers = []; failed = [];
+  $('retry').hidden = true; pendingCovers = []; pendingEpisodeHosts = []; failed = [];
   const categoryId = $('category').value, published = $('published').checked;
   const visited = new Set(), repeated = new Set();
   let totalPages = 0, savedSeries = 0, existingSeries = 0, episodesSaved = 0, episodesDuplicate = 0, failures = 0;
@@ -128,6 +130,11 @@ async function importSeries(items) {
             if (detail?.kind !== 'series') throw new Error('A página não contém episódios identificados. Abra a página da série.');
             const episodes = normalizeSeriesEpisodes(detail.episodes);
             if (!episodes.length) throw new Error('Nenhum episódio dublado válido encontrado.');
+            const episodeHosts = [...new Set(episodes.map((e) => 'https://' + new URL(e.url).hostname + '/*'))];
+            for (const host of episodeHosts) {
+              if (!(await chrome.permissions.contains({ origins: [host] })) && !pendingEpisodeHosts.includes(host)) pendingEpisodeHosts.push(host);
+            }
+            if (pendingEpisodeHosts.length) throw new Error('Acesso a servidor externo de episódios necessário. Autorize os servidores e repita a série.');
             const title = String(entry.title || detail.page?.title || '').trim().slice(0, 160);
             if (!title) throw new Error('Nome não identificado. Use Nome da série | URL.');
             const imageUrl = entry.coverUrl || detail.page?.coverUrl;
@@ -234,6 +241,19 @@ $('covers').onclick = async () => {
     }
     status('Capas processadas. Confira os avisos.', pendingCovers.length > 0);
   } catch (error) { pendingCovers = items; status(error.message, true); }
+  finally { busy = false; buttons(); }
+};
+$('episode-hosts').onclick = async () => {
+  if (busy || !pendingEpisodeHosts.length) return;
+  let permission;
+  try { permission = chrome.permissions.request({ origins: pendingEpisodeHosts }); }
+  catch (error) { status(error.message, true); return; }
+  busy = true; buttons();
+  try {
+    if (!(await permission)) throw new Error('Os domínios dos episódios não foram autorizados.');
+    pendingEpisodeHosts = [];
+    status('Servidores autorizados. Clique em Repetir somente as falhas.');
+  } catch (error) { status(error.message, true); }
   finally { busy = false; buttons(); }
 };
 async function init() {
