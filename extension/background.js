@@ -69,9 +69,38 @@ async function scanMoviePage(url) {
   }
 }
 
+
+async function scanSeriesPage(raw) {
+  const target = new URL(raw);
+  if (target.protocol !== 'https:' || target.username || target.password || target.href.length > 2048)
+    throw new Error('URL de série inválida.');
+  const pattern = `https://${target.hostname}/*`;
+  if (!(await chrome.permissions.contains({ origins: [pattern] })))
+    throw new Error('Autorize o domínio da série antes de importar.');
+  const tab = await chrome.tabs.create({ url: target.href, active: false });
+  try {
+    await waitForDocument(tab.id, 25000);
+    const [meta] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
+    let episodes = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const [response] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['season.js'] });
+      episodes = Array.isArray(response?.result) ? response.result : [];
+      if (episodes.length) break;
+      if (attempt < 2) await pause(1200);
+    }
+    if (episodes.length) return { kind: 'series', page: meta?.result || {}, episodes };
+    // A mesma heurística de cartões usada para importar filmes de listagens.
+    const [listing] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['movies.js'] });
+    return { kind: 'listing', entries: listing?.result || [] };
+  } finally { await chrome.tabs.remove(tab.id).catch(() => {}); }
+}
+
 export async function handleMessage(message) {
   const origin = acervoOrigin(message.origin);
-  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage', 'scanMoviePage'].includes(message.action)) throw new Error('Operação inválida.');
+  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage', 'scanMoviePage', 'scanSeriesPage'].includes(message.action)) throw new Error('Operação inválida.');
+  if (message.action === 'scanSeriesPage') {
+    return { ok: true, data: await scanSeriesPage(message.body?.url) };
+  }
   if (message.action === 'scanMoviePage') {
     return { ok: true, data: await scanMoviePage(message.body?.url) };
   }
@@ -111,12 +140,13 @@ export async function handleMessage(message) {
   } finally { if (message.action === 'save') saving = false; }
 }
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (sender.id !== chrome.runtime.id || !['popup.html', 'links.html'].some((page) => sender.url?.split('?')[0] === chrome.runtime.getURL(page))) return false;
+  if (sender.id !== chrome.runtime.id || !['popup.html', 'links.html', 'series-links.html'].some((page) => sender.url?.split('?')[0] === chrome.runtime.getURL(page))) return false;
   handleMessage(message).then(sendResponse).catch((error) => sendResponse({ ok: false, message: error.message }));
   return true; // Keep the response channel alive if the popup closes during a save.
 });
 
 
+const seriesPageMenuId = 'acervo-import-series-pages';
 const contextMenuId = 'acervo-add-episode';
 const seasonMenuId = 'acervo-import-season';
 function installContextMenu() {
@@ -127,6 +157,7 @@ function installContextMenu() {
       contexts: ['link', 'page']
     });
     chrome.contextMenus.create({ id: seasonMenuId, title: 'Importar temporada para o ACERVO', contexts: ['page'] });
+    chrome.contextMenus.create({ id: seriesPageMenuId, title: 'Importar séries desta página', contexts: ['page'] });
   });
 }
 chrome.runtime.onInstalled.addListener(installContextMenu);
@@ -142,6 +173,23 @@ async function openContextForm(capture, error = '') {
   });
 }
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === seriesPageMenuId) {
+    let payload;
+    try {
+      if (!tab?.id || !/^https:/.test(tab.url || '')) throw new Error('Abra uma página HTTPS de séries.');
+      const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['movies.js'] });
+      payload = { entries: result?.result || [], sourcePage: tab.url };
+    } catch (error) {
+      payload = { entries: [], sourcePage: tab?.url || '', error: error.message };
+    }
+    await chrome.storage.session.set({ seriesPageCandidates: payload });
+    await chrome.windows.create({
+      url: chrome.runtime.getURL('series-links.html?context=1'),
+      type: 'popup', width: 650, height: 760, focused: true
+    });
+    return;
+  }
+
   if (info.menuItemId === seasonMenuId) {
     try {
       const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['season.js'] });
