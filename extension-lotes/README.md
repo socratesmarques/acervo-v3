@@ -1,5 +1,17 @@
 # Enviar para ACERVO V2 — Importador em lotes (teste)
 
+## Importação automática de séries (nova opção)
+
+No popup da extensão, clique em **Importar séries por lista**. Você pode colar até 50 URLs HTTPS de páginas de séries ou de listagens com cartões de séries. Também está disponível o menu do botão direito **Importar séries desta página**, que preenche uma lista editável de candidatos para revisão.
+
+A extensão reaproveita `movies.js` para identificar cartões de séries e `season.js` para encontrar temporadas e episódios dublados nas páginas individuais. Antes de criar uma série, confirma que ao menos um player compatível é acessível; não cria séries vazias. Cria séries como rascunho por padrão, impede repetir o cadastro da mesma URL, informa o andamento por série/episódio e permite repetir apenas falhas.
+
+As capas são obtidas pelas mesmas validações usadas em filmes. JPEG, PNG e WebP suportados são salvos, preservando orientação vertical quando presente; a capa da série é padrão para episódios sem capa própria. Se a imagem ou os episódios estiverem em outro domínio, clique no botão de autorização oferecido pela extensão. Não contorna bloqueios nem força downloads. Alguns sites exigem revisão manual da lista e das páginas de temporadas.
+
+Depois de atualizar backend/frontend com a migration 009, recarregue a extensão em `chrome://extensions` (ou `edge://extensions`). Primeiro teste com 1–2 séries e publicação desmarcada.
+
+
+
 ## Lista de páginas de filmes (catálogos ou filmes individuais)
 
 Abra a extensão e selecione **Importar lista de links**. Cole até **50 endereços HTTPS**, um por linha. Cada endereço pode ser uma página com vários cartões de filmes (como `/filmes/pagina-1`) ou uma página individual (como `/filme/xyz`). Em página de catálogo, a extensão reutiliza o mesmo detector `movies.js` da opção **Importar filmes desta página**; em seguida, abre cada filme encontrado e captura o player com `extract.js`, gravando pelo endpoint já existente. Página individual com player é cadastrada diretamente.
