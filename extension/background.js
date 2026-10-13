@@ -38,10 +38,44 @@ async function siteTab(origin, create) {
   await waitForTab(tab.id);
   return tab.id;
 }
+
+async function scanMoviePage(url) {
+  const target = new URL(url);
+  if (target.protocol !== 'https:' || target.username || target.password || target.href.length > 2048)
+    throw new Error('Use uma página HTTPS válida.');
+  const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
+  const pattern = `https://${target.hostname}/*`;
+  if (!(await chrome.permissions.contains({ origins: [pattern] })))
+    throw new Error('Autorize o domínio da página antes de importar.');
+  if (!configured) throw new Error('Conecte ao seu ACERVO primeiro.');
+  const tab = await chrome.tabs.create({ url: target.href, active: false });
+  try {
+    await waitForDocument(tab.id, 25000);
+    // Uma página de filme é importada diretamente. Uma listagem usa o mesmo
+    // detector movies.js do menu "Importar filmes desta página".
+    const [individual] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['extract.js'] });
+    if (individual?.result?.urls?.length)
+      return { kind: 'movie', page: individual.result };
+    let entries = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['movies.js'] });
+      entries = Array.isArray(result?.result) ? result.result : [];
+      if (entries.length) break;
+      if (attempt < 2) await pause(1200);
+    }
+    return { kind: 'listing', entries };
+  } finally {
+    await chrome.tabs.remove(tab.id).catch(() => {});
+  }
+}
+
 export async function handleMessage(message) {
   const origin = acervoOrigin(message.origin);
-  if (!['connect', 'options', 'save', 'captureEpisode'].includes(message.action)) throw new Error('Operação inválida.');
-  if (message.action === 'captureEpisode') {
+  if (!['connect', 'options', 'save', 'captureEpisode', 'capturePage', 'scanMoviePage'].includes(message.action)) throw new Error('Operação inválida.');
+  if (message.action === 'scanMoviePage') {
+    return { ok: true, data: await scanMoviePage(message.body?.url) };
+  }
+  if (message.action === 'captureEpisode' || message.action === 'capturePage') {
     const target = new URL(message.body.url);
     if (target.protocol !== 'https:' || target.username || target.password) throw new Error('Link inválido.');
     const allowed = await chrome.permissions.contains({ origins: [`https://${target.hostname}/*`] });
