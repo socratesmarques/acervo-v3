@@ -15,7 +15,7 @@ const payload = z.object({
 export default async function bulkDeleteRoutes(app) {
   app.post("/api/admin/bulk-delete", {
     preHandler: admin,
-    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+    config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
   }, async (req) => {
     const { contentType, ids } = payload.parse(req.body);
     // Ordem estável evita deadlocks quando administradores excluem lotes simultaneamente.
