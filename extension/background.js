@@ -184,7 +184,8 @@ export async function handleMessage(message) {
       args: [{ origin, operation: 'uploadCover', body: { videoId, ...cover } }] });
     return injected?.result || { ok: false, message: 'Não foi possível salvar a capa.' };
   }
-  const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin; throw new Error('O endereço mudou. Clique em Conectar.');
+  const configured = (await chrome.storage.local.get('acervoOrigin')).acervoOrigin;
+  if (configured !== origin) throw new Error('O endereço mudou. Clique em Conectar.');
   if (['save', 'saveSeries', 'ensureSeason'].includes(message.action) && saving) throw new Error('Um envio já está em andamento. Aguarde o resultado.');
   if (['save', 'saveSeries', 'ensureSeason'].includes(message.action)) saving = true;
   try {
