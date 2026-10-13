@@ -15,6 +15,7 @@ import seriesRoutes from "./routes/series.js";
 import videoRoutes from "./routes/videos.js";
 import libraryRoutes from "./routes/library.js";
 import settingsRoutes from "./routes/settings.js";
+import bulkDeleteRoutes from "./routes/bulk-delete.js";
 export async function buildApp({ logger = true } = {}) {
   const app = Fastify({
     logger: logger
@@ -103,5 +104,6 @@ export async function buildApp({ logger = true } = {}) {
   await app.register(quickImportRoutes);
   await app.register(libraryRoutes);
   await app.register(settingsRoutes);
+  await app.register(bulkDeleteRoutes);
   return app;
 }
