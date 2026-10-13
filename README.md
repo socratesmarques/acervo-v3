@@ -17,6 +17,17 @@ A extensão principal (`extension/`) e a versão de lotes (`extension-lotes/`) o
 Para atualizar uma instalação existente, preserve `.env` e volumes, aplique a migration 009 com `docker compose up -d --build`, e depois recarregue a extensão em `chrome://extensions` ou `edge://extensions`. Não use `docker compose down -v`.
 
 
+## Exclusão em massa no painel administrativo
+
+Nas abas **Filmes e vídeos** e **Séries**, marque as caixas ao lado dos itens desejados, ou use **Selecionar todos desta página**. A seleção pode continuar entre páginas, até **100 registros** por operação. Revise a quantidade e confirme em **Excluir selecionados**.
+
+- A exclusão de filmes remove cadastros, históricos e favoritos e agenda a remoção dos arquivos pelo worker.
+- A exclusão de séries também exclui suas temporadas, seus episódios, históricos, favoritos e mídias, sem precisar apagar episódios individualmente.
+- A API exige administrador e CSRF, valida IDs sem duplicatas e usa uma única transação: se houver item excluído previamente, tipo divergente ou vídeo/episódio em processamento, **nenhum item daquele lote é apagado**.
+- O comando é permanente. Confira o número e os nomes na confirmação. Não são modificados vídeos ou séries não selecionados.
+
+Depois de atualizar os arquivos, reconstrua frontend e backend e reinicie os serviços usando seu procedimento habitual. Em instalações Docker, `docker compose up -d --build` sem `down -v`; em instalações Termux sem Docker, use o script de instalação/reinicialização habitual. Nenhuma migration de banco é necessária especificamente para essa função.
+
 ## Enviar filmes pelo navegador
 
 A extensão **Enviar para ACERVO 2.1** captura nome/player e salva filmes ou episódios diretamente. Lembra categoria, série, temporada e publicação, com numeração automática no servidor e proteção contra duplicados. O fluxo de revisão no painel continua disponível. Consulte [atualização, conexão e uso](extension/README.md).
