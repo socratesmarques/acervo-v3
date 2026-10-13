@@ -106,7 +106,6 @@ function VideoList() {
     [busy, setBusy] = useState(""),
     [selected, setSelected] = useState({});
   const selectedIds = Object.keys(selected);
-  const pageEligible = (statePlaceholder) => statePlaceholder?.items.filter((v) => v.status !== "processing") || [];
   const MAX_BULK = 100;
   const state = useData(
     (signal) => api(`/admin/videos?contentType=movie&limit=20&offset=${page * 20}`, { signal }),
@@ -122,7 +121,7 @@ function VideoList() {
     const timer = setInterval(state.reload, 5000);
     return () => clearInterval(timer);
   }, [state.data, state.reload]);
-  const eligible = pageEligible(state.data);
+  const eligible = state.data?.items.filter((v) => v.status !== "processing") || [];
   const allPageSelected = eligible.length > 0 && eligible.every((v) => selected[v.id]);
   function toggleOne(video, checked) {
     if (checked && !selected[video.id] && selectedIds.length >= MAX_BULK) {
@@ -296,7 +295,7 @@ function VideoList() {
                           </button>
                           {v.status === "failed" && (
                             <button
-                              disabled={busy === v.id}
+                              disabled={!!busy}
                               onClick={() => action(v, "retry")}
                             >
                               Reprocessar
