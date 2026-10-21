@@ -182,3 +182,4 @@ Não envie .env, mídias, backups, node_modules ou dist. Envie os lockfiles. Nen
 Mantenha próximos commits pequenos: feat(api), fix(player), test(auth), docs.
 
 Consulte CREDITS.md. ACERVO tem identidade própria e não é associado à Netflix.
+---
